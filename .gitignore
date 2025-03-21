@@ -2,6 +2,7 @@
 outputs/
 test_store/
 stress_results/
+data/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
