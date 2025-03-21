@@ -1,0 +1,31 @@
+costs listing: 	IN / cached / OUT tok per 1M
+
+OpenAI:
+$7.18 for 100 total reqs (25 each), 99.6K in toks	226.7K out toks
+	- o3-mini:		$1.10 / %0.55 / $4.40
+	- gpt-4o-mini:	$0.15 / $0.075 / $0.60
+	- gpt-4o:		$2.50 / $1.25 / $10.00
+	- o1:			$15.00 / $7.50 / $60.00
+
+	Actual costs:
+	cost spent:		IN 		/ OUT 
+	- o3-mini:		$0.028	/ $0.363
+	- gpt-4o-mini:	$0.004	/ $0.013
+	- gpt-4o:		$0.062	/ $0.211
+	- o1:			$0.369	/ $6.127
+
+
+Deepseek:
+$0.14 for 50 total reqs
+	Standard		(5:30PM - 9:30AM PST)
+	- chat:			$0.27 / $0.07 / $1.10
+	- reasoner:		$0.55 / $0.14 / $2.19
+
+	Discount		(9:30AM - 5:30PM PST)
+	- chat:			$0.135 / $0.035 / $0.550
+	- reasoner:		$0.135 / $0.035 / $0.550
+
+	Actual costs:	(Standard)
+	- chat:			$0.03
+	- reasoner:		$0.11
+

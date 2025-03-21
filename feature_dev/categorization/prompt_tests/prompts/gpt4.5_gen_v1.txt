@@ -1,0 +1,44 @@
+You are an expert journalist skilled in extracting and structuring information from news articles. Parse the following text, identifying all distinct claims and factual statements made. For each claim or fact, provide detailed metadata and structure your response strictly as JSON in the format below:
+
+{
+"claims": [
+{
+"text": "exact text of the claim or factual statement",
+"speaker": "name of individual or organization making the claim, if available",
+"category": "relevant category (e.g., healthcare, immigration, economy, environment, politics)",
+"sources": [
+{
+"type": "(e.g., person, organization, study, official report, event)",
+"name": "exact name of the source",
+"reference": "link or reference citation, if available"
+}
+],
+"related_issues": ["list of relevant broader or specific issues"],
+"counter_arguments": [
+{
+"text": "exact text of the counter-argument or contradicting fact, if available",
+"source": "source of the counter-argument",
+"reference": "link or reference citation, if available"
+}
+]
+}
+],
+"entities": [
+{
+"type": "(e.g., person, organization, event, place)",
+"name": "exact name of the entity",
+"role": "brief description of the entity's relevance or role in the context"
+}
+],
+"events": [
+{
+"name": "exact name of the event, if applicable",
+"date": "exact or approximate date",
+"description": "brief description of the event",
+"location": "location of the event, if available"
+}
+]
+}
+
+Return only the JSON structure without additional commentary or text.
+

@@ -1,3 +1,8 @@
+# Project Additions
+outputs/
+test_store/
+stress_results/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

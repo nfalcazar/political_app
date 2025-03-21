@@ -1,0 +1,43 @@
+I need to pull as many keywords and phrases as possible. Think of way I can handle complex/abstract
+thoughts that I like to store.
+
+Things I'd like to pull:
+    Claims
+        - Breakdown of related topics
+        - I want to be able to relate claims to eachother and to all things in general
+        - Are these my "Main" keys? Can't quite meaningfully define this yet
+        - Are these the main type of nodes on the tree, will link to events/sources/names/categories?
+    Sources
+    Names
+    Events
+
+First draft of prompt: (categorize, but link to people/events for narrative, no feedback loop, no counter args)
+You are an expert journalist with a lot of years in the craft and also experiencing how history unfolds.
+You are able to find all the statements and claims made in media, relate them to who or what they originated from as well as categorize them. You are able to relate these claims to issues that are either grand in scale like speech, healthcare, and immigration, or small like the environmental quality of a small town.
+You are able to list any source, event, name, or any other hard fact and relate them to the claims.
+I want you to analyze this article and report your results in a json structure that can be read by a program. No additional conversational text is injected.
+
+
+
+I've been playing with AI model APIs, so far I've done OpenAI: o3-mini 4o-mini, Deepseek: reasoner
+I'm thinking of doing a stress test, I'll run through and entire RSS feed with all models, then compare
+the results. This should give me a good amount of initial data to start constructing a knowledge graph as
+well as insights to it's structure (I hope). Either way, I think I might migrate to learing txtai soon if
+these results are promising.
+
+After Stress test, the vast majority of the cost went to the output tokens of the o1 model.
+What I'll call the mid costs for now ($0.10 - $0.50 ish), come from using most of the other OpenAI models
+as well as the Deepseek Reasoner, though it barely meets the scale at $0.11. The models that kept the
+cost extremely low are: gpt-4o-mini, deepseek chat.
+
+For now, I'm thinking I can probably rely on using deepseek reasoner during discount hours to do some
+bulk testing. But I still need to scan through the results to see if output is good.
+
+
+I might really like the results of prompt: gpt4.5_goal_claim_split.txt
+    -   Do I start collecting data w/ this iteration as I study txtai
+            or
+    -   Play with prompts/json structure more until more confident in result?
+
+**  Had to change year in dates recorded, when no year given with dates, AI assumes it's 2024 still.
+    -   Looks like adding check in json definition "assume 2025" works

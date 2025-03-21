@@ -1,0 +1,19 @@
+I didn't bother actually testing what entries in feed contain. Looks like full html of article body added to each rss entry.
+Can probably use requests lib during web searching
+
+RSS Feed seems to provide a reliable way to grab article text, just need to trim out their "ALL CAPS" links
+
+In RSS Stream, Fox seems to have different subcategories baked into their titles. For example there are polls, Fox News Politics (which contains multiple short updates)
+
+Fox transcripts have a lot of page breaks <br> between items as well as Labels to provide context.
+ie: START/END VIDEOTAPE, BEGIN/END VIDEO CLIP
+
+Just ran out of free articles :/ So Fox also has article limits... is this just the transcripts or is it for all articles?
+    - Might only be tied to transcripts
+
+TODO: Remember to delete trans_text.txt when categorized
+* moved to outputs, outputs put into gitignore
+
+I don't think it's worth the time to categorize transcripts yet:
+    - Limited access
+    - Major Delay (~5 mo)
