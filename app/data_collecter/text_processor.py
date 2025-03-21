@@ -66,8 +66,6 @@ class TextProcessor:
             # Check if media was already processed
             if media_data["link"] in links:
                 continue
-            else:
-                links.add(media_data["link"])
 
             # TODO: grab AI output, purge json comments it usually has
             try:
@@ -89,6 +87,8 @@ class TextProcessor:
                 with open(filepath, "w+") as f:
                     json.dump(cleaned_text, f, indent=2)
 
+                # Store seen link after all processing done
+                links.add(media_data["link"])
             except Exception as e:
                 print(e)
 
