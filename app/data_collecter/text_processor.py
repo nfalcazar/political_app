@@ -14,10 +14,15 @@
 #       -   Current logic ok since link isn't added to processed list, can be hit again
 
 # TODO: Convert stored links into hashes for faster check?
+#       -   GPT reccomends trying Pickle first
 
 # TODO: Find out why unicodes are still appearing in final output
 #       -   Looks like it's quote chars that would mess up JSON struct, don't see way around this
 #       -   Need to remember this when I start adding claims to Graph
+
+# TODO: Save bad AI output for error analysis
+
+# TODO: Should I move queue json structure into own class each file can refernce?
 
 from openai import OpenAI
 from multiprocessing import Queue
@@ -26,16 +31,20 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import json
-import html
+import pickle
+import logging
 
 sys.path.insert(1, "/home/nalc/Keyring")
 from pol_app_deepseek import deepseek_key
 
+logger = logging.getLogger(__name__)
+
 class TextProcessor:
     def __init__(self, in_queue, prompt=None):
+        self.error_count = 0
         self.in_queue = in_queue
         self.data_dir = Path("~/political_app/data/").expanduser()
-        self.links_file = self.data_dir / "links.json"
+        self.links_file = self.data_dir / "links.pkl"
         self.client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
         
         # load prompt from file if None passed in
@@ -47,41 +56,49 @@ class TextProcessor:
 
 
     def load_links(self):
-        # Create file if not exist
-        Path(self.links_file).touch(exist_ok=True)
-
         try:
-            with open(self.links_file, "r") as f:
-                links = json.load(f)
+            with open(self.links_file, "rb") as f:
+                links = pickle.load(f)
                 return links
-        except json.JSONDecodeError as e:
-            print(f"{e} - Empty Links File? returing empty set")        #TODO: add to logging when imp
-            return []
+        except Exception as e:
+            logger.warning(f"{e} - Empty Links File? returing empty set")        #TODO: add to logging when imp
+            return set()
         
 
-    def save_links(self, link_json):
-        with open(self.links_file, "w") as f:
-           json.dump(link_json, f, indent=2)
+    def save_links(self, links):
+        with open(self.links_file, "wb+") as f:
+           pickle.dump(links, f)
         return
-        
+    
+
+    def save_error(self, bad_output):
+        err_path = self.data_dir / f"processing_errs/err_{self.error_count}.txt"
+        err_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(err_path, "w+") as f:
+            f.write(bad_output)
+        return
+           
 
     def proc(self):
+        logger.info("Started proc() run")
+
         # Grab set of already processed links
-        links_json = self.load_links()
-        if links_json:
-            links = links_json["links"]
-        else:
-            links = links_json      # should be empty set
+        links = self.load_links()
 
         while True:
             media_data = self.in_queue.get()
             if media_data is None:
                 break
 
+            logger.debug(f"Got Media - {media_data['title']}")
+
             # Check if media was already processed
             if media_data["link"] in links:
+                # I think using Pickle handles seen links pretty well, don't need to log skips
+                #logger.info(f"\t\t- found in processed link store, skipping...")
                 continue
 
+            logger.info(f"Processing - {media_data['title']}")
             try:
                 completion = self.client.chat.completions.create(
                     model="deepseek-reasoner",
@@ -108,12 +125,14 @@ class TextProcessor:
                     json.dump(result_json, f, indent=2)
 
                 # Store seen link after all processing done
-                links.append(media_data["link"])
+                links.add(media_data["link"])
+            except json.JSONDecodeError as e:
+                self.save_error(cleaned_text)
+                logger.warning(f"{e} - Error output saved to data/processing_errs")
             except Exception as e:
-                print(e)
+                logger.error(f"Exception bucket for OpenAI errors hit - {e}")
 
-        new_links_json = {}
-        new_links_json["links"] = links
-        self.save_links(new_links_json)
+        self.save_links(links)
+        logger.info("Finished proc() run")
         return
 

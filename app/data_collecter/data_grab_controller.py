@@ -2,11 +2,24 @@
 #       to send "None" to processor to close it when processing is done
 
 # TODO: Modify for continuous run, accept commands from top level controller
+# TODO: move logger init logic to top level program in next phase
 
 import multiprocessing as mp
 from text_retrievers.rss_retriever import RssRetriever
 from text_processor import TextProcessor
 import time
+
+import logging
+import os
+from datetime import datetime
+log_file = "~/political_app/logs/" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".log"
+log_file = os.path.expanduser(log_file)
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class DataGrabController:
     def __init__(self):
@@ -25,28 +38,28 @@ class DataGrabController:
         rss_retriever = RssRetriever(shared_queue)
 
         # TODO: General proc startup
-        print("Initializing Procs")
+        logger.info("Initializing Procs")
         data_processor_proc = mp.Process(target=text_processor.proc)
         data_grabber_proc = mp.Process(target=rss_retriever.proc)
 
-        print("Starting Data Processor")
+        logger.info("Starting Data Processor")
         data_processor_proc.start()
         time.sleep(1)
-        print("Starting Data Grabber")
+        logger.info("Starting Data Grabber")
         data_grabber_proc.start()
 
         # Block until all article shoved into queue
-        print("Waiting on Data Grabber to end...")
+        logger.info("Waiting on Data Grabber to end...")
         data_grabber_proc.join()
-        print("Data Grabber Ended")
+        logger.info("Data Grabber Ended")
 
         # Send end flag to processor to terminate after queue processed
-        print("Waiting on Data Processor to end...")
+        logger.info("Waiting on Data Processor to end...")
         shared_queue.put(None)
         data_processor_proc.join()
-        print("Data Processor ended")
+        logger.info("Data Processor ended")
 
-        print("All RSS articles processed, terminating...")
+        logger.info("All RSS articles processed, terminating...")
         return
 
 

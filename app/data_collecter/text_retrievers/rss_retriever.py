@@ -5,6 +5,9 @@ from bs4 import BeautifulSoup
 import feedparser
 import json
 import html
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RssRetriever:
     def __init__(self, out_queue, self_run = False):
@@ -16,12 +19,15 @@ class RssRetriever:
         
 
     def proc(self):
+        logger.info("Started proc() run")
         count = 0
 
         for feed_url in self.rss_feeds:
+            logger.info(f"Grabbing feed - {feed_url}")
             feed = feedparser.parse(feed_url)
 
             for entry in feed.entries:
+                logger.debug(f"Found - {entry.title}")
                 article_text = entry.content[0]["value"]
 
                 soup = BeautifulSoup(article_text, "html.parser")
@@ -46,6 +52,7 @@ class RssRetriever:
                 else:
                     # Normal run (called by controller)
                     self.out_queue.put(data_json)
+        logger.info("Finished proc() run")
 
 
 if __name__ == "__main__":
