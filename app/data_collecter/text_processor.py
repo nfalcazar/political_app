@@ -53,6 +53,7 @@ class TextProcessor:
                 self.prompt = f.read()
         else:
             self.prompt = prompt
+        return
 
 
     def load_links(self):
