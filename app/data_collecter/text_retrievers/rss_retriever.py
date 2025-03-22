@@ -44,7 +44,7 @@ class RssRetriever:
                         json.dump(data_json, f, indent=4)
                     count = count + 1
                 else:
-                    # Normal run (called by collector)
+                    # Normal run (called by controller)
                     self.out_queue.put(data_json)
 
 
