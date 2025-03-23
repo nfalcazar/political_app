@@ -4,13 +4,22 @@
 # TODO: Modify for continuous run, accept commands from top level controller
 # TODO: move logger init logic to top level program in next phase
 
+# ADD data grab dir to path
+import sys
+import os
+from pathlib import Path
+
+PROJ_ROOT = os.environ["PROJ_ROOT"]
+dir_path = PROJ_ROOT + "/app/data_collector"
+sys.path.insert(1, dir_path)
+
 import multiprocessing as mp
 from text_retrievers.rss_retriever import RssRetriever
 from text_processor import TextProcessor
 import time
 
 import logging
-import os
+
 from datetime import datetime
 log_file = "~/political_app/logs/" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".log"
 log_file = os.path.expanduser(log_file)
