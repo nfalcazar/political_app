@@ -1,28 +1,19 @@
-# NOTE: For first iteration, RssRetriever send flag when all rss articles
-#       to send "None" to processor to close it when processing is done
-
-# TODO: Modify for continuous run, accept commands from top level controller
-# TODO: move logger init logic to top level program in next phase
-
-# ADD data grab dir to path
-import sys
+from datetime import datetime
+import logging
+import multiprocessing as mp
 import os
 from pathlib import Path
-
-PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
-dir_path = PROJ_ROOT / "/app/data_collector"
-sys.path.insert(1, str(dir_path))
-
-import multiprocessing as mp
-from text_retrievers.rss_retriever import RssRetriever
-from text_processor import TextProcessor
+import sys
 import time
 
-import logging
+PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
+dir_path = PROJ_ROOT / "app/data_collector"
+sys.path.insert(1, str(dir_path))
 
-from datetime import datetime
+from text_retrievers.rss_retriever import RssRetriever
+from text_processor import TextProcessor
+
 log_file = PROJ_ROOT / f"logs/{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-log_file = os.path.expanduser(log_file)
 logging.basicConfig(
     filename=log_file,
     level=logging.INFO,
@@ -39,7 +30,7 @@ class DataGrabController:
         pass
 
 
-    def main_proc_selfrun(self):
+    def rss_grab(self):
         manager = mp.Manager()
         shared_queue = manager.Queue()
 
@@ -74,4 +65,4 @@ class DataGrabController:
 
 if __name__ == "__main__":
     contr = DataGrabController()
-    contr.main_proc_selfrun()
+    contr.rss_grab()

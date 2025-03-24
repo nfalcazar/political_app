@@ -68,7 +68,7 @@ class TextProcessor:
                 links = pickle.load(f)
                 return links
         except Exception as e:
-            logger.warning(f"{e} - Empty Links File? returing empty set")        #TODO: add to logging when imp
+            logger.warning(f"{e} - Empty Links File? returing empty set")
             return set()
         
 
@@ -97,15 +97,13 @@ class TextProcessor:
             if media_data is None:
                 break
 
-            logger.debug(f"Got Media - {media_data['title']}")
-
             # Check if media was already processed
             if media_data["link"] in links:
-                # I think using Pickle handles seen links pretty well, don't need to log skips
-                #logger.info(f"\t\t- found in processed link store, skipping...")
+                logger.info(f"Link seen before, skipping - {media_data['title']}")
                 continue
+            else:
+                logger.info(f"Processing - {media_data['title']}")
 
-            logger.info(f"Processing - {media_data['title']}")
             try:
                 completion = self.client.chat.completions.create(
                     model="deepseek-reasoner",
