@@ -40,7 +40,8 @@ PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
 KEYRING = os.environ["KEYRING"]
 
 sys.path.insert(1, KEYRING)
-from pol_app_deepseek import deepseek_key
+from pol_app_deepseek   import deepseek_key
+from pol_app_openai     import openai_key
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,8 @@ class TextProcessor:
         self.in_queue = in_queue
         self.data_dir = PROJ_ROOT / "data"
         self.links_file = self.data_dir / "links.pkl"
-        self.client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
+        self.deep_client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
+        self.openai_client = OpenAI(api_key=openai_key)
         self.prompt_fname = PROJ_ROOT / "app/data_collector/prompt.txt"
         
         # load prompt from file if None passed in
@@ -60,7 +62,21 @@ class TextProcessor:
         else:
             self.prompt = prompt
         return
+    
 
+    def query_ext_model(self, client, model_str, prompt):
+        try:
+            completion = client.chat.completions.create(
+                model=model_str,
+                messages=[{
+                    "role": "user",
+                    "content": prompt
+                }]
+            )
+            return completion.choices[0].message.content
+        except:
+            raise
+    
 
     def load_links(self):
         try:
@@ -78,11 +94,12 @@ class TextProcessor:
         return
     
 
-    def save_error(self, bad_output):
-        err_path = self.data_dir / f"processing_errs/err_{self.error_count}.txt"
+    def save_error(self, client, bad_output):
+        err_path = self.data_dir / f"processing_errs/err_{client}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         err_path.parent.mkdir(parents=True, exist_ok=True)
         with open(err_path, "w+") as f:
             f.write(bad_output)
+        self.error_count += 1
         return
            
 
@@ -104,40 +121,53 @@ class TextProcessor:
             else:
                 logger.info(f"Processing - {media_data['title']}")
 
+            good_output = True
             try:
-                completion = self.client.chat.completions.create(
-                    model="deepseek-reasoner",
-                    messages=[{
-                        "role": "user",
-                        "content": f"{self.prompt}\n\nText:\n{media_data['text']}"
-                    }]
+                result_str = self.query_ext_model(
+                    self.deep_client,
+                    "deepseek-reasoner",
+                    f"{self.prompt}\n\nText:\n{media_data['text']}"
                 )
-                result_str = completion.choices[0].message.content
+            except Exception as e:
+                # Deepseek failed, log error, try with OpenAI
+                self.save_error("deepseek", f"{self.prompt}\n\nText:\n{media_data['text']}")
+                logger.warning(f"OpenAI error. Client - DeepSeek  error - {e}")
 
+                try:
+                    result_str = self.query_ext_model(
+                        self.openai_client,
+                        "o3-mini",
+                        f"{self.prompt}\n\nText:\n{media_data['text']}"
+                    )
+                except:
+                    self.save_error("openai", f"{self.prompt}\n\nText:\n{media_data['text']}")
+                    logger.error(f"OpenAI error. Client - OpenAI  error - {e}")
+                    good_output = False
+
+            if good_output:
                 # clean json tags that sometime show up
                 cleaned_text = re.sub(r'^```json\s*|```$', '', result_str)
 
-                # form result json
-                result_json = json.loads(cleaned_text)
-                result_json["title"] = media_data["title"]
-                result_json["link"] = media_data["link"]
-                result_json["summary"] = media_data["summary"]
+                try:
+                    # form result json
+                    result_json = json.loads(cleaned_text)
+                    result_json["title"] = media_data["title"]
+                    result_json["link"] = media_data["link"]
+                    result_json["summary"] = media_data["summary"]
 
-                time_str = datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"
-                filepath = self.data_dir / time_str
-                
-                with open(filepath, "w+") as f:
-                    json.dump(result_json, f, indent=2)
+                    time_str = datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"
+                    filepath = self.data_dir / time_str
+                    
+                    with open(filepath, "w+") as f:
+                        json.dump(result_json, f, indent=2)
 
-                # Store seen link after all processing done
-                links.add(media_data["link"])
-            except json.JSONDecodeError as e:
-                self.save_error(cleaned_text)
-                logger.warning(f"{e} - Error output saved to data/processing_errs")
-            except Exception as e:
-                logger.error(f"Exception bucket for OpenAI errors hit - {e}")
+                    # Store seen link after all processing done
+                    links.add(media_data["link"])
+                except json.JSONDecodeError as e:
+                    self.save_error(cleaned_text)
+                    logger.warning(f"{e} - Error output saved to data/processing_errs")
 
         self.save_links(links)
-        logger.info("Finished proc() run")
+        logger.info(f"Finished proc() run. {self.error_count} errors occured.")
         return
 
