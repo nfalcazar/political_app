@@ -46,9 +46,10 @@ from pol_app_openai     import openai_key
 logger = logging.getLogger(__name__)
 
 class TextProcessor:
-    def __init__(self, in_queue, prompt=None):
+    def __init__(self, in_queue, out_queue, prompt=None):
         self.error_count = 0
         self.in_queue = in_queue
+        self.out_queue = out_queue
         self.data_dir = PROJ_ROOT / "data"
         self.links_file = self.data_dir / "links.pkl"
         self.deep_client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
@@ -160,6 +161,9 @@ class TextProcessor:
                     
                     with open(filepath, "w+") as f:
                         json.dump(result_json, f, indent=2)
+                    
+                    if self.out_queue:
+                        self.out_queue.put(result_json)
 
                     # Store seen link after all processing done
                     links.add(media_data["link"])
