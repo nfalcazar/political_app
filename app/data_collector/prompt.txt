@@ -14,7 +14,7 @@ For each claim or fact, provide detailed metadata, assign unique identifiers, an
       "type": "analysis" or "statement_of_action",
       "text": "exact text of the claim or factual statement",
       "speaker": "entity_id",
-      "category": "relevant category (e.g., healthcare, immigration, economy, environment, politics)",
+      "categories": ["relevant category (e.g., healthcare, immigration, economy, environment, politics)"],
       "sources": ["source_id"],
       "events": ["event_id"],
       "related_issues": ["list of relevant broader or specific issues"],

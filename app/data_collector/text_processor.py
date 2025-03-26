@@ -151,13 +151,14 @@ class TextProcessor:
 
                 try:
                     # form result json
+                    time_str = datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"
+                    filepath = self.data_dir / time_str
+
                     result_json = json.loads(cleaned_text)
                     result_json["title"] = media_data["title"]
                     result_json["link"] = media_data["link"]
                     result_json["summary"] = media_data["summary"]
-
-                    time_str = datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"
-                    filepath = self.data_dir / time_str
+                    result_json["filename"] = time_str
                     
                     with open(filepath, "w+") as f:
                         json.dump(result_json, f, indent=2)
