@@ -30,7 +30,7 @@ embeddings = Embeddings({
         {"name": "topicrank", "expression": "graph(indexid, 'topicrank')"}
     ],
     "graph": {
-        "limit": 20,
+        "limit": 5,
         "minscore": 0.1,
         "topics": {
             "categories": claims["claim_categories"]
@@ -54,30 +54,30 @@ for x, topic in enumerate(list(graph.topics.keys())[:5]):
     print(graph.categories[x], topic)
      
 # Plot graph
-labels = {x: f"{graph.attribute(x, 'id')} ({x})" for x in graph.scan()}
-options = {
-    "node_size": 750,
-    "node_color": "#0277bd",
-    "edge_color": "#454545",
-    "font_color": "#fff",
-    "font_size": 6,
-    "alpha": 1.0
-}
+# labels = {x: f"{graph.attribute(x, 'id')} ({x})" for x in graph.scan()}
+# options = {
+#     "node_size": 750,
+#     "node_color": "#0277bd",
+#     "edge_color": "#454545",
+#     "font_color": "#fff",
+#     "font_size": 6,
+#     "alpha": 1.0
+# }
 
-fig, ax = plt.subplots(figsize=(17, 8))
-pos = nx.spring_layout(graph.backend, seed=0, k=0.9, iterations=50)
-nx.draw_networkx(graph.backend, pos=pos, labels=labels, **options)
-ax.set_facecolor("#303030")
-ax.axis("off")
-fig.set_facecolor("#303030")
+# fig, ax = plt.subplots(figsize=(17, 8))
+# pos = nx.spring_layout(graph.backend, seed=0, k=0.9, iterations=50)
+# nx.draw_networkx(graph.backend, pos=pos, labels=labels, **options)
+# ax.set_facecolor("#303030")
+# ax.axis("off")
+# fig.set_facecolor("#303030")
 
 #plt.show()
-plt.savefig("./graph.png")
+#plt.savefig("./graph.png")
 print()
 print()
 
-for x in graph.showpath(50, 100):
-    print(graph.node(x))
+# for x in graph.showpath(50, 100):
+#     print(graph.node(x))
 
 # print()
 # print()
@@ -112,7 +112,7 @@ while True:
         break
 
     query = user_input
-    for result in embeddings.search(query, limit=5):
+    for result in embeddings.search(query, limit=10):
         pprint.pp(result, indent=4, width=120)
         print()
     print()

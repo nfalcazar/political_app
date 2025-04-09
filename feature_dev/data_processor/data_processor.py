@@ -100,7 +100,7 @@ for file in data_files:
         # String for txtai embedding training ( text + categories )
         train_text = claim["text"] + " : " + cat_str
         claim["train_text"] = train_text
-        claims_text.append(train_text)
+        #claims_text.append(train_text)
 
     # run to correct ref pointers
     # Going to assume json won't always list elements in order of their ids
@@ -109,6 +109,8 @@ for file in data_files:
         for entity in data_json["entities"]:
             if entity["id"] == claim["speaker"]:
                 claim["speaker"] = entity["uid"]
+                claim["train_text"] = claim["train_text"] + f": {entity["name"]}"
+                claims_text.append(claim["train_text"])
                 break
         
         for i in range(len(claim["sources"])):

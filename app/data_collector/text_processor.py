@@ -108,12 +108,14 @@ class TextProcessor:
         logger.info("Started proc() run")
 
         # Grab set of already processed links
-        links = self.load_links()
+        #links = self.load_links()
 
         while True:
             media_data = self.in_queue.get()
             if media_data is None:
                 break
+
+            links = self.load_links()
 
             # Check if media was already processed
             if media_data["link"] in links:
@@ -123,6 +125,7 @@ class TextProcessor:
                 logger.info(f"Processing - {media_data['title']}")
 
             good_output = True
+            client_name = "deepseek"
             try:
                 result_str = self.query_ext_model(
                     self.deep_client,
@@ -131,8 +134,9 @@ class TextProcessor:
                 )
             except Exception as e:
                 # Deepseek failed, log error, try with OpenAI
-                self.save_error("deepseek", f"{self.prompt}\n\nText:\n{media_data['text']}")
+                self.save_error(client_name, f"{self.prompt}\n\nText:\n{media_data['text']}")
                 logger.warning(f"OpenAI error. Client - DeepSeek  error - {e}")
+                client_name = "openai"
 
                 try:
                     result_str = self.query_ext_model(
@@ -141,7 +145,7 @@ class TextProcessor:
                         f"{self.prompt}\n\nText:\n{media_data['text']}"
                     )
                 except:
-                    self.save_error("openai", f"{self.prompt}\n\nText:\n{media_data['text']}")
+                    self.save_error(client_name, f"{self.prompt}\n\nText:\n{media_data['text']}")
                     logger.error(f"OpenAI error. Client - OpenAI  error - {e}")
                     good_output = False
 
@@ -168,11 +172,12 @@ class TextProcessor:
 
                     # Store seen link after all processing done
                     links.add(media_data["link"])
+                    self.save_links(links)
                 except json.JSONDecodeError as e:
-                    self.save_error(cleaned_text)
+                    self.save_error(client_name, cleaned_text)
                     logger.warning(f"{e} - Error output saved to data/processing_errs")
 
-        self.save_links(links)
+        #self.save_links(links)
         logger.info(f"Finished proc() run. {self.error_count} errors occured.")
         return
 
