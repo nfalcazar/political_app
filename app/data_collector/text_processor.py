@@ -24,6 +24,10 @@
 
 # TODO: Should I move queue json structure into own class each file can refernce?
 
+# TODO: Add title to text sent for prompt to see if better reasoning
+# TODO: Add 1 retry attempt if json decode error
+# TODO: Add parallel proc of links (should be handled in data_grab_cont?)
+
 from openai import OpenAI
 from multiprocessing import Queue
 import re

@@ -14,7 +14,8 @@ with open(edu_file, "r") as f:
 # Grab Prompt
 #prompt_name = "gpt4.5_gen_v1"
 #prompt_name = "gpt4.5_gen_v1_w_ids"
-prompt_name = "gpt4.5_goal_claim_split"
+#prompt_name = "gpt4.5_goal_claim_split"
+prompt_name = "summ_and_quote"
 with open(f"./prompts/{prompt_name}.txt", "r") as f:
     prompt = f.read()
 
@@ -27,7 +28,7 @@ try:
         model="deepseek-reasoner",
         messages=[{
             "role": "user",
-            "content": f"{prompt}\n\nText:\n{article['text']}"
+            "content": f"{prompt}\n\nTitle:\n{article['title']}\n\nText:\n{article['text']}"
         }]
     )
 
