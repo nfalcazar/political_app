@@ -1,6 +1,12 @@
 # TODO: Determine if better to pass prompt in init or proc
 #       Current thinking is: if I want multiple text processors, I'll probably spin them up with
 #       unique purpose, so maybe better to put in init for now
+#       --
+#       OR
+#       --
+#       Only need two prompts:
+#           News / Text based articles
+#           Transcripts / AI Transcriptions
 
 # TODO: Remove Deepseek hardcode when I move to incorporate more models
 # TODO: Proper file path handling when I move to make this app delierable
@@ -24,9 +30,12 @@
 
 # TODO: Should I move queue json structure into own class each file can refernce?
 
+# TODO: Test if adding a summary before full text helps AI w/ processing
+
 # TODO: Add title to text sent for prompt to see if better reasoning
 # TODO: Add 1 retry attempt if json decode error
 # TODO: Add parallel proc of links (should be handled in data_grab_cont?)
+# TODO: Add ablility to select models, using one model per for now
 
 from openai import OpenAI
 from multiprocessing import Queue
@@ -35,7 +44,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import json
-import pickle
 import logging
 import os
 from pathlib import Path
@@ -50,29 +58,32 @@ from pol_app_openai     import openai_key
 logger = logging.getLogger(__name__)
 
 class TextProcessor:
-    def __init__(self, in_queue, out_queue, prompt=None):
+    def __init__(self, save_json=True):
+        self.save_json=save_json
         self.error_count = 0
-        self.in_queue = in_queue
-        self.out_queue = out_queue
         self.data_dir = PROJ_ROOT / "data"
-        self.links_file = self.data_dir / "links.pkl"
         self.deep_client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
         self.openai_client = OpenAI(api_key=openai_key)
-        self.prompt_fname = PROJ_ROOT / "app/data_collector/prompt.txt"
-        
-        # load prompt from file if None passed in
-        if not prompt:
-            with open(self.prompt_fname, "r") as f:
-                self.prompt = f.read()
-        else:
-            self.prompt = prompt
+        self.default_prompt_fname = PROJ_ROOT / "app/data_collector/prompt.txt"
+        self.max_retries = 3    # max retries for json errors
+        with open(self.default_prompt_fname, "r") as f:
+            self.default_prompt = f.read()
         return
-    
 
-    def query_ext_model(self, client, model_str, prompt):
+
+    def query_ext_model(self, prompt, client, model=None):
+        if client == "deepseek":
+            client = self.deep_client
+            if not model:
+                model = "deepseek-reasoner"
+        elif client == "openai":
+            client = self.openai_client
+            if not model:
+                model = "o3-mini"
+        
         try:
             completion = client.chat.completions.create(
-                model=model_str,
+                model=model,
                 messages=[{
                     "role": "user",
                     "content": prompt
@@ -81,21 +92,6 @@ class TextProcessor:
             return completion.choices[0].message.content
         except:
             raise
-    
-
-    def load_links(self):
-        try:
-            with open(self.links_file, "rb") as f:
-                links = pickle.load(f)
-                return links
-        except Exception as e:
-            logger.warning(f"{e} - Empty Links File? returing empty set")
-            return set()
-        
-
-    def save_links(self, links):
-        with open(self.links_file, "wb+") as f:
-           pickle.dump(links, f)
         return
     
 
@@ -106,82 +102,60 @@ class TextProcessor:
             f.write(bad_output)
         self.error_count += 1
         return
+    
+
+    def form_data_json(self, serial_json, media_data):
+        try:
+            # form result json
+            time_str = datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"
+            filepath = self.data_dir / time_str
+
+            result_json = json.loads(serial_json)
+            result_json["title"] = media_data["title"]
+            result_json["link"] = media_data["link"]
+            result_json["filename"] = time_str
+            
+            if self.save_json:
+                with open(filepath, "w+") as f:
+                    json.dump(result_json, f, indent=2)
+            return result_json
+        except:
+            raise
            
 
-    def proc(self):
-        logger.info("Started proc() run")
+    def proc(self, media_data, prompt=None):
+        logger.info(f"Processing - {media_data['title']}")
+        retry_count = 0
+        client_name = "deepseek"
 
-        # Grab set of already processed links
-        #links = self.load_links()
+        if prompt:
+            full_prompt = f"{prompt}\n\nTitle: {media_data['title']}\n\nText:\n{media_data['text']}"
+        else:
+            full_prompt = f"{self.default_prompt}\n\nTitle: {media_data['title']}\n\nText:\n{media_data['text']}"
 
-        while True:
-            media_data = self.in_queue.get()
-            if media_data is None:
-                break
-
-            links = self.load_links()
-
-            # Check if media was already processed
-            if media_data["link"] in links:
-                logger.info(f"Link seen before, skipping - {media_data['title']}")
-                continue
-            else:
-                logger.info(f"Processing - {media_data['title']}")
-
-            good_output = True
-            client_name = "deepseek"
+        while retry_count < self.max_retries:
             try:
-                result_str = self.query_ext_model(
-                    self.deep_client,
-                    "deepseek-reasoner",
-                    f"{self.prompt}\n\nText:\n{media_data['text']}"
-                )
+                result_str = self.query_ext_model(full_prompt, client_name)
             except Exception as e:
-                # Deepseek failed, log error, try with OpenAI
-                self.save_error(client_name, f"{self.prompt}\n\nText:\n{media_data['text']}")
-                logger.warning(f"OpenAI error. Client - DeepSeek  error - {e}")
-                client_name = "openai"
+                self.save_error(client_name, f"{e}\n{media_data['link']}\n\nfull_prompt")
+                logger.warning(f"OpenAI error. Client - {client_name}  error - {e}")
+                if client_name == "deepseek":
+                    client_name = "openai"
+                    continue
+                else:
+                    return False
 
-                try:
-                    result_str = self.query_ext_model(
-                        self.openai_client,
-                        "o3-mini",
-                        f"{self.prompt}\n\nText:\n{media_data['text']}"
-                    )
-                except:
-                    self.save_error(client_name, f"{self.prompt}\n\nText:\n{media_data['text']}")
-                    logger.error(f"OpenAI error. Client - OpenAI  error - {e}")
-                    good_output = False
-
-            if good_output:
-                # clean json tags that sometime show up
-                cleaned_text = re.sub(r'^```json\s*|```$', '', result_str)
-
-                try:
-                    # form result json
-                    time_str = datetime.now().strftime("%Y%m%d_%H%M%S") + ".json"
-                    filepath = self.data_dir / time_str
-
-                    result_json = json.loads(cleaned_text)
-                    result_json["title"] = media_data["title"]
-                    result_json["link"] = media_data["link"]
-                    result_json["summary"] = media_data["summary"]
-                    result_json["filename"] = time_str
-                    
-                    with open(filepath, "w+") as f:
-                        json.dump(result_json, f, indent=2)
-                    
-                    if self.out_queue:
-                        self.out_queue.put(result_json)
-
-                    # Store seen link after all processing done
-                    links.add(media_data["link"])
-                    self.save_links(links)
-                except json.JSONDecodeError as e:
-                    self.save_error(client_name, cleaned_text)
+            # clean json tags that sometime show up
+            cleaned_text = re.sub(r'^```json\s*|```$', '', result_str)
+            try:
+                extract_data = self.form_data_json(cleaned_text, media_data)
+            except json.JSONDecodeError as e:
+                retry_count = retry_count + 1
+                if retry_count == self.max_retries:
+                    self.save_error(client_name, f"{e}\n{media_data['link']}\n\n{cleaned_text}")
                     logger.warning(f"{e} - Error output saved to data/processing_errs")
 
-        #self.save_links(links)
-        logger.info(f"Finished proc() run. {self.error_count} errors occured.")
-        return
+            return extract_data
 
+        #logger.info(f"Finised processing - {media_data['title']}")
+        return False
