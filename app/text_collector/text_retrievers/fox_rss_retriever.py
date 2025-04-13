@@ -1,6 +1,3 @@
-# TODO: Going to have to confirm feed struct when grabbing feeds from other sites
-#       Might be Fox specific file
-
 from bs4 import BeautifulSoup
 import feedparser
 import json
@@ -9,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class RssRetriever:
+class FoxRssRetriever:
     def __init__(self, out_queue, self_run = False):
         self.self_run = self_run
         self.out_queue = out_queue
@@ -56,5 +53,5 @@ class RssRetriever:
 
 
 if __name__ == "__main__":
-    retriever = RssRetriever(None, True)
+    retriever = FoxRssRetriever(None, True)
     retriever.proc()

@@ -1,41 +1,5 @@
-# TODO: Determine if better to pass prompt in init or proc
-#       Current thinking is: if I want multiple text processors, I'll probably spin them up with
-#       unique purpose, so maybe better to put in init for now
-#       --
-#       OR
-#       --
-#       Only need two prompts:
-#           News / Text based articles
-#           Transcripts / AI Transcriptions
-
-# TODO: Remove Deepseek hardcode when I move to incorporate more models
-# TODO: Proper file path handling when I move to make this app delierable
-# TODO: Proper error handling
-# TODO: Assuming there will always be delay in processing, using time stamp to allow unique filenames
-# TODO: FOR ALL FILES, when proper flow establish, keep track of project root dir, store in env
-
-# TODO: Saw error: Unterminated string starting at: line 489 column 15 (char 15171)
-#       Add check after AI grab to see if string is able to convert to json?
-#       -   Don't think I'd have programatic way of fixing bad formed JSON outputs
-#       -   Current logic ok since link isn't added to processed list, can be hit again
-
-# TODO: Convert stored links into hashes for faster check?
-#       -   GPT reccomends trying Pickle first
-
-# TODO: Find out why unicodes are still appearing in final output
-#       -   Looks like it's quote chars that would mess up JSON struct, don't see way around this
-#       -   Need to remember this when I start adding claims to Graph
-
-# TODO: Save bad AI output for error analysis
-
 # TODO: Should I move queue json structure into own class each file can refernce?
-
 # TODO: Test if adding a summary before full text helps AI w/ processing
-
-# TODO: Add title to text sent for prompt to see if better reasoning
-# TODO: Add 1 retry attempt if json decode error
-# TODO: Add parallel proc of links (should be handled in data_grab_cont?)
-# TODO: Add ablility to select models, using one model per for now
 
 from openai import OpenAI
 from multiprocessing import Queue
@@ -96,6 +60,9 @@ class TextProcessor:
     
 
     def save_error(self, client, bad_output):
+        if not self.save_json:
+            return
+
         err_path = self.data_dir / f"processing_errs/err_{client}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         err_path.parent.mkdir(parents=True, exist_ok=True)
         with open(err_path, "w+") as f:

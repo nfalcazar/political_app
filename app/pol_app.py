@@ -9,7 +9,9 @@ import os
 from pathlib import Path
 import time
 
-from data_collector.data_grab_controller import DataGrabController
+from data_collector.data_extracter import DataExtracter
+from text_collector.text_retrievers.fox_rss_retriever import FoxRssRetriever
+
 
 PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
 
@@ -24,23 +26,22 @@ logger = logging.getLogger(__name__)
 def main():
     logger.info("Starting Top Level Process")
     manager = mp.Manager()
-    data_queue = manager.Queue()
     cmd_queue = manager.Queue()
+    link_queue = manager.Queue()
 
-    logger.info("Starting DataGrabController")
-    data_grabber = DataGrabController(cmd_queue, data_queue)
-    proc_data_grabber = mp.Process(target=data_grabber.main_proc)
-    proc_data_grabber.start()
+    logger.info("Starting DataExtracter")
+    extracter = DataExtracter(cmd_queue, link_queue)
+    extracter.start()
 
-    logger.info("Sending cmd - GRAB_RSS to DataGrabController")
-    cmd_queue.put("GRAB_RSS")
-
+    logger.info("Starting Fox Rss Retriever")
+    fox_retrieve = FoxRssRetriever(link_queue)
+    fox_retrieve.proc()
     time.sleep(15)
 
-    logger.info("Sending cmd - STOP_DATAGRAB to DataGrabController")
-    cmd_queue.put("STOP_DATAGRAB")
+    logger.info("Sending cmd - SHUTDOWN to DataExtracter")
+    cmd_queue.put("SHUTDOWN")
     
-    proc_data_grabber.join()
+    extracter.join()
     logger.info("Shut down Top Level Process")
     return
 
