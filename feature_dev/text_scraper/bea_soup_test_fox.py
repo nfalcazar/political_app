@@ -27,6 +27,8 @@ soup = BeautifulSoup(response.text, "html.parser")
 
 
 with open("./fox_article_text.txt", "w+") as f:
+    headline = soup.find("h1").get_text()
+
     article_body = soup.find("div", class_="article-body")
 
     results = []
@@ -51,6 +53,7 @@ with open("./fox_article_text.txt", "w+") as f:
 
 
     print("\n\n")
+    print(f"{headline}\n\n")
     for item in results:
         print([item])
         f.write(f"{item}")

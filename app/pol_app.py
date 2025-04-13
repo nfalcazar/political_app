@@ -9,8 +9,12 @@ import os
 from pathlib import Path
 import time
 
+import pickle
+
 from data_collector.data_extracter import DataExtracter
 from text_collector.text_retrievers.fox_rss_retriever import FoxRssRetriever
+
+from text_collector.text_retrievers.fox_article_retriever import FoxArticleRetriever
 
 
 PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
@@ -30,12 +34,20 @@ def main():
     link_queue = manager.Queue()
 
     logger.info("Starting DataExtracter")
-    extracter = DataExtracter(cmd_queue, link_queue)
+    extracter = DataExtracter(cmd_queue, link_queue, max_threads=50)
     extracter.start()
 
-    logger.info("Starting Fox Rss Retriever")
-    fox_retrieve = FoxRssRetriever(link_queue)
-    fox_retrieve.proc()
+    # logger.info("Starting Fox Rss Retriever")
+    # fox_retrieve = FoxRssRetriever(link_queue)
+    # fox_retrieve.proc()
+
+    # Process old data
+    fox_article_ret = FoxArticleRetriever()
+    with open(PROJ_ROOT / "data/old_data/links.pkl", "rb") as f:
+        links = pickle.load(f)
+    for link in links:
+        link_queue.put(fox_article_ret.grabText(link))
+
     time.sleep(15)
 
     logger.info("Sending cmd - SHUTDOWN to DataExtracter")

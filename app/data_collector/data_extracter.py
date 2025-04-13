@@ -40,12 +40,12 @@ class DataExtracter(mp.Process):
         self.max_threads = max_threads
         self.thread_pool = ContinuousExecutor(max_workers=self.max_threads)
         self.text_processor = TextProcessor(save_json=True)
-        self.curr_links = self.load_links()
-        self.links_file = PROJ_ROOT / "data" / "links.pkl"
+        self.links_file = PROJ_ROOT / "data/links.pkl"
+        
 
-    
     def run(self):
         logger.info("Started Run")
+        self.curr_links = self.load_links()
         proc_link = threading.Thread(target=self.link_handler)
         proc_data = threading.Thread(target=self.data_handler)
         proc_link.start()
@@ -128,16 +128,3 @@ class DataExtracter(mp.Process):
 
     def get_max_threads(self):
         return self.max_threads
-
-
-# if __name__ == "__main__":
-#     log_file = PROJ_ROOT / f"logs/{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-#     logging.basicConfig(
-#         filename=log_file,
-#         level=logging.INFO,
-#         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-#     )
-#     logger = logging.getLogger(__name__)
-
-#     contr = DataExtracter(None, None)
-#     contr.selfrun_rss_grab()

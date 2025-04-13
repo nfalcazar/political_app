@@ -20,6 +20,7 @@ from pol_app_deepseek   import deepseek_key
 from pol_app_openai     import openai_key
 
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.ERROR)
 
 class TextProcessor:
     def __init__(self, save_json=True):
