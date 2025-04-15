@@ -23,7 +23,8 @@ log_file = PROJ_ROOT / f"logs/{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 logging.basicConfig(
     filename=log_file,
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    format='[%(levelname)-7s] %(module)-20s: %(message)s'
+    #format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -32,28 +33,39 @@ def main():
     manager = mp.Manager()
     cmd_queue = manager.Queue()
     link_queue = manager.Queue()
+    failed_links = manager.Queue()
 
     logger.info("Starting DataExtracter")
-    extracter = DataExtracter(cmd_queue, link_queue, max_threads=50)
+    extracter = DataExtracter(cmd_queue, link_queue, failed_links=failed_links, max_threads=50)
     extracter.start()
 
-    # logger.info("Starting Fox Rss Retriever")
-    # fox_retrieve = FoxRssRetriever(link_queue)
-    # fox_retrieve.proc()
+    logger.info("Starting Fox Rss Retriever")
+    fox_retrieve = FoxRssRetriever(link_queue)
+    fox_retrieve.proc()
+    time.sleep(300)
 
-    # Process old data
-    fox_article_ret = FoxArticleRetriever()
-    with open(PROJ_ROOT / "data/old_data/links.pkl", "rb") as f:
-        links = pickle.load(f)
-    for link in links:
-        link_queue.put(fox_article_ret.grabText(link))
+    # # Process old data
+    # fox_article_ret = FoxArticleRetriever(save_errors=True)
+    # with open(PROJ_ROOT / "data/old_data/links.pkl", "rb") as f:
+    #     links = pickle.load(f)
+    # for link in links:
+    #     res, link_data = fox_article_ret.grabText(link)
+    #     if res:
+    #         link_queue.put(link_data)
+    #     else:
+    #         failed_links.put(link_data)
 
-    time.sleep(15)
+    
 
-    logger.info("Sending cmd - SHUTDOWN to DataExtracter")
-    cmd_queue.put("SHUTDOWN")
+    logger.info("Sending cmd - shutdown to DataExtracter")
+    cmd = ("SHUTDOWN", "GRACE")
+    cmd_queue.put(cmd)
     
     extracter.join()
+    while not failed_links.empty():
+        link = failed_links.get()
+        logger.info(f"Failed to get data for link - {link}")
+
     logger.info("Shut down Top Level Process")
     return
 
