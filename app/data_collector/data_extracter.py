@@ -35,23 +35,15 @@ class DataExtracter(mp.Process):
             #"SUBMIT_ARTICLE"
         ]
         self.run_flag = True
-        #self.t_pool_quit = False
-        #self.running_grab_procs = []
         self.max_threads = max_threads
-        ##
         self.text_processor = TextProcessor(save_json=True)
         self.links_file = PROJ_ROOT / "data/links.pkl"
         self.link_bank = set()
         self.link_recv = set() # use for error logging
         self.link_read = set() # use for error logging
         self.failed_links = failed_links
-        #self.link_run_flag = True
         self.data_grab_flag = True
         self.link_run_flag = True
-        # self.proc_data = threading.Thread(target=self.data_handler)
-        # self.proc_data.start()
-        # self.proc_link = threading.Thread(target=self.link_handler)
-        # self.proc_link.start()
         
 
     def run(self):
@@ -75,11 +67,6 @@ class DataExtracter(mp.Process):
             if cmd == "SHUTDOWN":
                 if arg == "GRACE":
                     self.shutdown_graceful()
-            # elif cmd == "SUBMIT_ARTICLE":
-            #     if arg['link'] not in self.link_bank | self.link_recv:
-            #         logger.debug(f"Adding link to threadpool - {arg['link']}")
-            #         self.thread_pool.submit(self.text_processor.proc, arg)
-            #         self.link_recv.add(arg['link'])
 
         if self.failed_links:
             for link in self.link_recv.difference(self.link_read):
@@ -95,7 +82,7 @@ class DataExtracter(mp.Process):
                 link = self.link_queue.get(block=True, timeout=5)
 
                 if link['link'] not in self.link_bank:
-                    logger.info(f"Adding link to threadpool - {link['link']}")
+                    logger.debug(f"Adding link to threadpool - {link['link']}")
                     self.thread_pool.submit(self.text_processor.proc, link)
                     self.link_recv.add(link['link'])
             except queue.Empty:
@@ -104,25 +91,7 @@ class DataExtracter(mp.Process):
 
 
     def data_handler(self):
-        logger.info("Starting Data Handler")
-        # logger.info(f"t_pool: {self.t_pool_quit}")
-        # while not self.t_pool_quit:
-        #     logger.info(f"Data Has Result?: {self.thread_pool.has_result()}")
-        #     if self.thread_pool.has_result():
-        #         att_res = self.thread_pool.get_result()
-        #         try:
-        #             res, data = att_res
-        #             logger.info(f"Res: {res} for link - {data['link']}")
-        #             if res:
-        #                 self.link_read.add(data['link'])
-        #             else:
-        #                 logger.info(f"Error processing link: {data['link']}")
-        #         except:
-        #             logger.warning(f"Thread error?  - {att_res}")
-
-        #         # TODO: Add data to DB
-        #     else:
-        #         time.sleep(0.1)
+        logger.debug("Starting Data Handler")
 
         while self.data_grab_flag:
             time.sleep(10)
@@ -130,31 +99,17 @@ class DataExtracter(mp.Process):
                 att_res = self.thread_pool.get_result()
                 try:
                     res, data = att_res
-                    logger.info(f"Res: {res} for link - {data['link']}")
                     if res:
+                        logger.debug(f"Got data for link - {data['link']}")
                         self.link_read.add(data['link'])
                     else:
                         logger.info(f"Error processing link: {data['link']}")
                 except:
                     logger.warning(f"Thread error?  - {att_res}")
-
-        # while self.data_grab_flag:
-        #     try:
-        #         att_res = self.res_queue.get(block=True, timeout=10)
-        #         res, data = att_res
-        #         logger.info(f"Res: {res} for link - {data['link']}")
-        #         if res:
-        #             self.link_read.add(data['link'])
-        #         else:
-        #             logger.info(f"Error processing link: {data['link']}")      
-        #     except queue.Empty:
-        #         continue
-        #     except ValueError:
-        #         logger.warning(f"Thread error?  - {att_res}")
                 
         # Save links back to file
         self.save_links(self.link_bank | self.link_read)
-        logger.info("Shutdown Data Handler")
+        logger.debug("Shutdown Data Handler")
         return
 
 
@@ -191,15 +146,12 @@ class DataExtracter(mp.Process):
         # Let current jobs finish
         logger.info("Waiting on ThreadPool jobs to complete...")
         while self.thread_pool.has_jobs():
-            logger.info(f"ThreadPool has jobs?  {self.thread_pool.has_jobs()}")
-            time.sleep(10)
+            time.sleep(5)
 
         # Let data_handler finish grabbing results
         logger.info("Waiting on data_handler to grab all results...")
-        #self.res_queue.join()
         while self.thread_pool.has_result():
-            logger.info(f"ThreadPool has result?  {self.thread_pool.has_result()}")
-            time.sleep(10)
+            time.sleep(5)
 
         logger.info("Waiting on data handler to terminate...")
         self.data_grab_flag = False

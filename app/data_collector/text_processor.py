@@ -115,6 +115,7 @@ class TextProcessor:
         openai_client = OpenAI(api_key=openai_key)
         retry_count = 0
         models = self.set_up_models(deep_client, openai_client, model_overrides)
+        error = ""
 
         # Start w/ Deepseek model
         model = models["deepseek"]
@@ -142,13 +143,15 @@ class TextProcessor:
             cleaned_text = re.sub(r'^```json\s*|```$', '', result_str)
             try:
                 extract_data = self.form_data_json(cleaned_text, media_data)
-                logger.info(f"Completed processing for - {media_data['link']}")
+                logger.debug(f"Completed processing for - {media_data['link']}")
                 return (True, extract_data)
             except json.JSONDecodeError as e:
                 retry_count = retry_count + 1
+                if retry_count == self.max_retries:
+                    error = e
                 continue
                     
         #logger.info(f"Finised processing - {media_data['title']}")
-        logger.warning(f"Json Decode error: {e}")
+        logger.warning(f"Json Decode error: {error}")
         self.save_error(model["name"], f"{e}\n{media_data['link']}\n\n{cleaned_text}")
         return (False, media_data['link'])

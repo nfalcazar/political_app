@@ -16,7 +16,7 @@ class FoxRssRetriever:
         
 
     def proc(self):
-        logger.info("Started proc() run")
+        logger.debug("Started proc() run")
         count = 0
 
         for feed_url in self.rss_feeds:
@@ -49,7 +49,7 @@ class FoxRssRetriever:
                 else:
                     # Normal run (called by controller)
                     self.out_queue.put(data_json)
-        logger.info("Finished proc() run")
+        logger.debug("Finished proc() run")
 
 
 if __name__ == "__main__":
