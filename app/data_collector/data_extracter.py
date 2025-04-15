@@ -100,7 +100,7 @@ class DataExtracter(mp.Process):
                 try:
                     res, data = att_res
                     if res:
-                        logger.debug(f"Got data for link - {data['link']}")
+                        logger.info(f"Got data for link - {data['link']}")
                         self.link_read.add(data['link'])
                     else:
                         logger.info(f"Error processing link: {data['link']}")
