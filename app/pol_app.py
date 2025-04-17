@@ -36,7 +36,7 @@ def main():
     failed_links = manager.Queue()
 
     logger.info("Starting DataExtracter")
-    extracter = DataExtracter(cmd_queue, link_queue, failed_links=failed_links, max_threads=50)
+    extracter = DataExtracter(cmd_queue, link_queue, failed_links=failed_links, max_threads=25)
     extracter.start()
 
     logger.info("Starting Fox Rss Retriever")

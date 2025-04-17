@@ -29,7 +29,6 @@ class DataExtracter(mp.Process):
         super().__init__()
         self.cmd_queue = cmd_queue
         self.link_queue = link_queue
-        self.res_queue = queue.Queue()
         self.cmds = [
             "SHUTDOWN"
             #"SUBMIT_ARTICLE"
