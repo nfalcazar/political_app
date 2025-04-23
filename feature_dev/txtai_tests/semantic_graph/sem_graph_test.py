@@ -18,8 +18,8 @@ with open(data_file, "r") as f:
     claims = json.load(f)
 
 embeddings = Embeddings({
-    #"path": "sentence-transformers/all-MiniLM-L6-v2",
-    "path": "sentence-transformers/paraphrase-MiniLM-L3-v2",
+    "path": "sentence-transformers/all-MiniLM-L6-v2",
+    #"path": "sentence-transformers/paraphrase-MiniLM-L3-v2",
     "content": True,
     "functions": [
         {"name": "graph", "function": "graph.attribute"},

@@ -2,6 +2,9 @@
 First draft of top level control program, will most likely split control logic into specialized 
 directories.
 '''
+
+# TODO: Change failed_links to MP.List/Set?
+
 from datetime import datetime
 import logging
 import multiprocessing as mp
@@ -36,24 +39,25 @@ def main():
     failed_links = manager.Queue()
 
     logger.info("Starting DataExtracter")
-    extracter = DataExtracter(cmd_queue, link_queue, failed_links=failed_links, max_threads=25)
+    extracter = DataExtracter(cmd_queue=cmd_queue, link_queue=link_queue, failed_links=failed_links, max_threads=50)
     extracter.start()
+
+    # Reprocess data
+    fox_article_ret = FoxArticleRetriever(save_errors=True)
+    with open(PROJ_ROOT / "data/links_to_process/links.pkl", "rb") as f:
+        links = pickle.load(f)
+    for link in links:
+        res, link_data = fox_article_ret.grabText(link)
+        if res:
+            link_queue.put(link_data)
+        else:
+            failed_links.put(link_data)
+    #time.sleep(30)
 
     logger.info("Starting Fox Rss Retriever")
     fox_retrieve = FoxRssRetriever(link_queue)
     fox_retrieve.proc()
     time.sleep(30)
-
-    # # Process old data
-    # fox_article_ret = FoxArticleRetriever(save_errors=True)
-    # with open(PROJ_ROOT / "data/old_data/links.pkl", "rb") as f:
-    #     links = pickle.load(f)
-    # for link in links:
-    #     res, link_data = fox_article_ret.grabText(link)
-    #     if res:
-    #         link_queue.put(link_data)
-    #     else:
-    #         failed_links.put(link_data)
 
     logger.info("Sending cmd - shutdown to DataExtracter")
     cmd = ("SHUTDOWN", "GRACE")

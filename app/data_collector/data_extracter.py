@@ -26,21 +26,21 @@ logger = logging.getLogger(__name__)
 
 class DataExtracter(mp.Process):
     def __init__(self, cmd_queue, link_queue, failed_links=None, max_threads=10):
-        super().__init__()
         self.cmd_queue = cmd_queue
         self.link_queue = link_queue
+        self.failed_links = failed_links
+        self.max_threads = max_threads
+        super().__init__()
         self.cmds = [
             "SHUTDOWN"
             #"SUBMIT_ARTICLE"
         ]
         self.run_flag = True
-        self.max_threads = max_threads
         self.text_processor = TextProcessor(save_json=True)
         self.links_file = PROJ_ROOT / "data/links.pkl"
         self.link_bank = set()
         self.link_recv = set() # use for error logging
         self.link_read = set() # use for error logging
-        self.failed_links = failed_links
         self.data_grab_flag = True
         self.link_run_flag = True
         
@@ -85,7 +85,8 @@ class DataExtracter(mp.Process):
                     self.thread_pool.submit(self.text_processor.proc, link)
                     self.link_recv.add(link['link'])
             except queue.Empty:
-                time.sleep(1)
+                #time.sleep(1)
+                continue
         logger.debug("Shutdown Link Handler")
 
 
@@ -138,6 +139,11 @@ class DataExtracter(mp.Process):
 
     def shutdown_graceful(self):
         logger.info("Graceful Shutdown triggered...")
+
+        logger.info("Waiting on all links to be processed...")
+        while not self.link_queue.empty():
+            time.sleep(5)
+
         logger.info("Waiting on link handler to terminate...")
         self.link_run_flag = False
         self.proc_link.join()

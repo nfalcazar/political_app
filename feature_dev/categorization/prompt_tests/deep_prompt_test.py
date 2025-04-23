@@ -23,7 +23,9 @@ url = "https://www.foxnews.com/politics/fani-willis-thinks-shes-above-law-georgi
 #prompt_name = "gpt4.5_gen_v1_w_ids"
 #prompt_name = "gpt4.5_goal_claim_split"
 #prompt_name = "summ_and_quote"
-prompt_name = "summ_and_quote2"
+#prompt_name = "summ_and_quote2"
+#prompt_name = "canon_claim_test"
+prompt_name = "canon_supp_refut_claims"
 with open(f"./prompts/{prompt_name}.txt", "r") as f:
     prompt = f.read()
 

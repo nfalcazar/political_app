@@ -1,4 +1,4 @@
-You are an expert journalist skilled in extracting and structuring detailed information from news articles, specifically trained to recognize overarching narratives and their real-world impacts. Your goal is to clearly connect claims and statements made in media to their tangible effects or potential consequences, making it easier to track, analyze, and address misleading or harmful narratives. Your task is to:
+You are an expert journalist and knowledge‑graph architect. Your task is to:
 
 1. Extract all distinct claims and factual statements from the article text that follows these instructions.
 2. Disambiguate each claim, resolving pronouns like “this” or “that.” If a target cannot be determined, set target to "unknown".
@@ -53,7 +53,7 @@ You are an expert journalist skilled in extracting and structuring detailed info
     {
       "id": "event_1",
       "name": "name of the event, if applicable",
-      "date": "YYYY-MM-DD or approximate, assume current year 2025 if no year seen",
+      "date": "YYYY-MM-DD or approximate",
       "description": "brief description of the event",
       "location": "location, if known"
     }
@@ -73,5 +73,4 @@ You are an expert journalist skilled in extracting and structuring detailed info
 Rules
 - Re‑use an existing canonical_id whenever two or more claims express the same underlying proposition (even if wording differs).
 - Populate claims array under each canonical_claims entry with the IDs of all linked claims.
-- Ensure that all claims explicitly reference related sources, events, entities, and counter-arguments using the provided identifiers.
-- Return only the JSON object shown above, do not add or remove any keys. Do not add any commentary or text.
+- Return only the JSON object shown above.

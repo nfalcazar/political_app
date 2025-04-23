@@ -1,0 +1,11 @@
+Need to figure out how to deal with counter claims.
+My assumptions:
+    - Using similarity scores from embedding is strong at content relation, but not polarity
+        aka:    If a pair of claims prove or deny x person is a criminal. Then similarity scores
+                are really good at picking out the person being associated with the word criminal, but not
+                wether they say he is or is not.
+    - I should be okay with opposite phrasing being seen as two separate claims
+        * Difference between saying Biden isn't opening the border and Biden is strengthening the border.
+        * x immigration app contained fraudulent refs compared to:
+            - x immigration app did not contain frad...
+            - x immigration app was correctly filled

@@ -88,14 +88,16 @@ for file in data_files:
         claim_count = claim_count + 1
 
         #claims.append(claim)
-
-        if "categories" in claim:
-            for category in claim["categories"]:
+        for category in claim["categories"]:
                 categories.add(category)
-            cat_str = " ".join(claim["categories"])
-        elif "category" in claim:
-            categories.add(claim["category"])
-            cat_str = claim["category"]
+        cat_str = " ".join(claim["categories"])
+        # if "categories" in claim:
+        #     for category in claim["categories"]:
+        #         categories.add(category)
+        #     cat_str = " ".join(claim["categories"])
+        # elif "category" in claim:
+        #     categories.add(claim["category"])
+        #     cat_str = claim["category"]
 
         # String for txtai embedding training ( text + categories )
         train_text = claim["text"] + " : " + cat_str
