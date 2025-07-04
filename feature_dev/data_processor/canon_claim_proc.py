@@ -65,7 +65,7 @@ for file in json_flist:
         if new_id not in entities_by_id.keys():
             entities_by_id[new_id] = entity
             
-    # 3. First run of canonical claims to generate ID's
+    # 4. First run of canonical claims to generate ID's
     local_canon_id_to_hash = {}
     for cc in data.get('canonical_claims', []):
         orig_id = cc['id']
@@ -73,11 +73,11 @@ for file in json_flist:
         cc['id'] = new_id
         local_canon_id_to_hash[orig_id] = new_id
 
-    # 3. Group claims
+    # 5. Group claims
     local_claim_id_to_hash = {}
     for claim in data.get('claims', []):
         orig_id = claim['id']
-        new_id = generate_id(claim['text'])
+        new_id = generate_id(claim['quote'])
         claim['id'] = new_id
         # Replace event, source, canoncial, and entity references with hashed IDs
         claim['events'] = [
@@ -98,7 +98,7 @@ for file in json_flist:
         claim['file'] = data.get('filename', '')
         claims_by_id[new_id] = claim
 
-    # 4. Group canonical claims with updated refs
+    # 6. Group canonical claims with updated refs
     for cc in data.get('canonical_claims', []):
         # Map any claim_id or claim_ids fields to new hashed claim IDs
         try:

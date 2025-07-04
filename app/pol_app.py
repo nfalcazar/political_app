@@ -43,15 +43,15 @@ def main():
     extracter.start()
 
     # Reprocess data
-    fox_article_ret = FoxArticleRetriever(save_errors=True)
-    with open(PROJ_ROOT / "data/links_to_process/links.pkl", "rb") as f:
-        links = pickle.load(f)
-    for link in links:
-        res, link_data = fox_article_ret.grabText(link)
-        if res:
-            link_queue.put(link_data)
-        else:
-            failed_links.put(link_data)
+    # fox_article_ret = FoxArticleRetriever(save_errors=True)
+    # with open(PROJ_ROOT / "data/links_to_process/links.pkl", "rb") as f:
+    #     links = pickle.load(f)
+    # for link in links:
+    #     res, link_data = fox_article_ret.grabText(link)
+    #     if res:
+    #         link_queue.put(link_data)
+    #     else:
+    #         failed_links.put(link_data)
     #time.sleep(30)
 
     logger.info("Starting Fox Rss Retriever")
