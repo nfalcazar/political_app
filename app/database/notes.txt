@@ -1,0 +1,12 @@
+This code is based off:
+
+Github:
+https://github.com/daveebbelaar/pgvectorscale-rag-solution
+https://github.com/timescale/pgvectorscale
+
+Youtube:
+https://www.youtube.com/watch?v=hAdEuDBN57g
+https://www.youtube.com/watch?v=TbtBhbLh0cc
+
+Needed to install some headers for Postgres for pip install:
+libpq-dev
