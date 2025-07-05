@@ -127,7 +127,8 @@ class DataGrabber:
             "canonical_claims": canonical_by_id,
             "claims": claims_by_id,
             "sources": sources_by_id,
-            "events": events_by_id
+            "events": events_by_id,
+            "entities": entities_by_id
         }
 
         if save_json:

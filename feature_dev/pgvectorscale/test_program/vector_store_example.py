@@ -45,26 +45,26 @@ def main():
     # print("Adding DataFrame to DB...")
     # vec.upsert(df)
 
-    print("Finished setup, entering input loop.\n")
+    print("Finished setup, entering input loop.")
     # Question loop w/ similarity search
     query = None
     while query != "exit":
-        query = input("Query (\"exit\" to quit):  ")
+        query = input("\n\nQuery (\"exit\" to quit):  ")
         if query == "exit":
             continue
 
-        results = vec.search(query, limit=10)
-        response = Synthesizer.generate_response(question=query, context=results)
+        results: pd.DataFrame = vec.search(query, limit=10)
+        #response = Synthesizer.generate_response(question=query, context=results)
 
         print(f"DB results:")
-        for row in results["content"]:
-            print(f"-  {row}")
+        for dist, cont in zip(results["distance"], results["content"]):
+            print(f"-  ({dist}) {cont}")
 
-        print(f"\n\nAnswer:\n{response.answer}\n")
-        print("Thought process:")
-        for thought in response.thought_process:
-            print(f"- {thought}")
-        print(f"\nContext: {response.enough_context}")
+        # print(f"\n\nAnswer:\n{response.answer}\n")
+        # print("Thought process:")
+        # for thought in response.thought_process:
+        #     print(f"- {thought}")
+        # print(f"\nContext: {response.enough_context}")
 
 
 if __name__ == "__main__":
