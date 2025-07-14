@@ -7,3 +7,6 @@ https://github.com/timescale/pgvectorscale
 Youtube:
 https://www.youtube.com/watch?v=hAdEuDBN57g
 https://www.youtube.com/watch?v=TbtBhbLh0cc
+
+Cluster Evaluation Info:
+https://epjdatascience.springeropen.com/articles/10.1140/epjds/s13688-025-00520-6#:~:text=4
