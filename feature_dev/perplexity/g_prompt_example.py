@@ -11,6 +11,7 @@ sys.path.insert(1, KEYRING)
 from pol_app_goog_cust_search import g_search_api_key
 from pol_app_goog_cust_search import g_search_eng_id
 from pol_app_openai import openai_key
+from pol_app_deepseek   import deepseek_key
 
 #NOTE:  Needed rule in prompt to stop queries from having "" (exact quote searches)
 
@@ -30,20 +31,23 @@ with open('./g_search_prompt.txt', "r") as f:
     prompt = f.read()
 
 with open("./site_rest_prompt.txt", "r") as f:
-    prompt = prompt + f.read()
+    prompt = prompt + '\n' + f.read()
 
 prompt = prompt + f"\n\nClaim:\n{claim}"
 
-client = OpenAI(api_key=openai_key)
+#client = OpenAI(api_key=openai_key)    # ChatGPT
+client = OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
 try:
     completion = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        #model="gpt-4o",             
+        #model="gpt-4.1-mini",
+        #model="gpt-4o", 
+        model="deepseek-chat",           
         messages=[{
             "role": "user",
             "content": prompt
         }]
     )
+
     result = completion.choices[0].message.content
     result = result.replace("json", '')
     result = result.replace("```", '')
@@ -61,7 +65,8 @@ response = requests.get(url, params=params)
 response.raise_for_status()
 
 # write full result to file
-with open("./outputs/g_prompt_ex.txt", "w+") as f:
+with open("./outputs/deep_g_prompt_ex.txt", "w+") as f:
+#with open("./outputs/gpt_g_prompt_ex.txt", "w+") as f:
     f.write(f"Query prompt:\n{prompt}\n\n")
     f.write(f"Query resp:\n")
     json.dump(result, f, indent=2)
