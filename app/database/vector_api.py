@@ -4,16 +4,12 @@ from typing import Any, List, Optional, Tuple, Union
 from datetime import datetime
 
 import pandas as pd
-from config.settings import get_settings
+from settings import get_settings
 from openai import OpenAI
 from timescale_vector import client
 
-import os
-import sys
-from pathlib import Path
-
-PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
-#TODO Add general AI key
+#NOTE: Mainly copied from youtube example
+#TODO: Proper citation/licensing, strip for my use case
 
 class VectorStore:
     """A class for managing vector operations and database interactions."""
@@ -21,7 +17,7 @@ class VectorStore:
     def __init__(self):
         """Initialize the VectorStore with settings, OpenAI client, and Timescale Vector client."""
         self.settings = get_settings()
-        self.openai_client = OpenAI(api_key=self.settings.openai.openapi_key)
+        self.openai_client = OpenAI(api_key=self.settings.openai.api_key)
         self.embedding_model = self.settings.openai.embedding_model
         self.vector_settings = self.settings.vector_store
         self.vec_client = client.Sync(
@@ -81,7 +77,7 @@ class VectorStore:
             f"Inserted {len(df)} records into {self.vector_settings.table_name}"
         )
 
-    def search(
+    def search_by_text(
         self,
         query_text: str,
         limit: int = 5,
@@ -156,6 +152,43 @@ class VectorStore:
             return self._create_dataframe_from_results(results)
         else:
             return results
+        
+
+    def search_by_embed(
+        self,
+        query_embed: List[float],
+        limit: int = 5,
+        metadata_filter: Union[dict, List[dict]] = None,
+        predicates: Optional[client.Predicates] = None,
+        time_range: Optional[Tuple[datetime, datetime]] = None,
+        return_dataframe: bool = True,
+    ) -> Union[List[Tuple[Any, ...]], pd.DataFrame]:
+        start_time = time.time()
+
+        search_args = {
+            "limit": limit,
+        }
+
+        if metadata_filter:
+            search_args["filter"] = metadata_filter
+
+        if predicates:
+            search_args["predicates"] = predicates
+
+        if time_range:
+            start_date, end_date = time_range
+            search_args["uuid_time_filter"] = client.UUIDTimeRange(start_date, end_date)
+
+        results = self.vec_client.search(query_embed, **search_args)
+        elapsed_time = time.time() - start_time
+
+        logging.info(f"Vector search completed in {elapsed_time:.3f} seconds")
+
+        if return_dataframe:
+            return self._create_dataframe_from_results(results)
+        else:
+            return results
+
 
     def _create_dataframe_from_results(
         self,

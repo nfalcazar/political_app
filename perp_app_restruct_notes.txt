@@ -1,0 +1,26 @@
+Plan for perp_app_restruct branch:
+This is a rewrite of logic / prompts to add DB, Perplexity research, fact processing
+
+A) New DB with edge table to handle all connections
+B) Add Perplexity to:
+    - Broad research of canon claim (output sent to LLM to extract facts/sources)
+    - Primary source finder for facts
+C) Add embeddings to facts to attempt to programically match to claims
+D) Some way to keep track of links / primary sources across processes
+
+? Should I drop canon claim table, only use embedding table for them?
+    how to handle filtered out claims?
+    For now, store all processed media into compressed json files
+
+
+Future plan ideas:
+- Add scoring system for determining important claims, finalize filter for claims/facts
+- Logic to add "metadata" to various tables
+    * GPT says to use hybrid approach, add key terms as actual column names
+    * Starting with generic metadata for now, will add terms to columns when seems like they are used a lot
+- look into LightRAG, n8n implementation of app
+    * https://www.youtube.com/watch?v=EUG65dIY-2k
+
+
+Misc:
+- Still want app structure of: logic to locate links to media, logic process links, logic to process facts/claims, ? logic to handle DB ?
