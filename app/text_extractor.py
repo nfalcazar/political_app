@@ -68,6 +68,8 @@ class TextExtractor(mp.Process):
     
 
     #NOTE: Depending on Crawl4AI to properly index chunks isn't reliable
+    #TODO: Consider favoring threads vs parallel async to tie entries w/ results
+    #   - Removes need to add url and date fields in schema
     async def handle_news_article(self, entry):
         urls = entry['urls']
 
@@ -77,8 +79,10 @@ class TextExtractor(mp.Process):
 
         prompt = "\
         You are given the webpage for a text based News article. I want you to grab the \
-        title of the article along with its content (stored into body_text). Ignore any \
-        advertisements, captions, or anything else not related to what the article is about.\
+        title of the article (stored in title), the date the article was publised in the format \
+        'Fri, 08 Aug 2025 17:43:55 -0400' where -400 is the UTC offset (stored in published), \
+        along with its content (stored into body_text). Ignore any advertisements, captions, or \
+        anything else not related to what the article is about.\
         "
         extraction_strategy = LLMExtractionStrategy(
             llm_config=LLMConfig(
@@ -87,8 +91,7 @@ class TextExtractor(mp.Process):
             ),
             instruction=prompt,
             extract_type="schema",
-            schema="{url: string, title: string, body_text: string}",
-            #overlap_rate=0.05,
+            schema="{url: string, title: string, published: string, body_text: string}",
             apply_chunking=False,
             verbose=False,
         )

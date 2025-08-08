@@ -31,10 +31,8 @@ logging.basicConfig(
     level=logging.WARNING,
     format='%(asctime)s.%(msecs)03d [%(levelname)-7s] %(module)-20s: %(message)s',
     datefmt='%H:%M:%S'
-    #format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
 )
 module_list = [
-    #"pol_app",
     "__main__",
     "text_processor",
     "text_extractor",

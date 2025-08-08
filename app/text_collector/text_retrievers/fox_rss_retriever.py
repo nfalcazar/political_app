@@ -38,6 +38,7 @@ class FoxRssRetriever:
                 data_json = {}
                 data_json["title"] = html.unescape(entry.title)
                 data_json["link"] = entry.link
+                data_json["published"] = entry.published
                 data_json["summary"] = html.unescape(entry.summary)
                 data_json["text"] = text
 

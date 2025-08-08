@@ -7,9 +7,9 @@ feed = feedparser.parse(url)
 #     print(entry.title, entry.link)
 #     print()
 
-with open("./rss_struct.txt", "w+") as f:
+with open("./outputs/rss_struct.txt", "w+") as f:
     pprint.pp(feed.entries, stream=f)
 
-with open("./rss_article_list.txt", "w+") as f:
+with open("./outputs/rss_article_list.txt", "w+") as f:
     for entry in feed.entries:
         f.write(f"{entry.title}\n{entry.link}\n\n")
