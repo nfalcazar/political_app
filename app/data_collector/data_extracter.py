@@ -19,7 +19,8 @@ sys.path.insert(1, str(dir_path))
 sys.path.insert(1, str(util_path))
 
 from ContinuousExecutor import ContinuousExecutor
-from text_processor import TextProcessor
+#from text_processor import TextProcessor
+from ai_ext_calls import OpenAiSync
 # TODO: Database injector
 
 logger = logging.getLogger(__name__)

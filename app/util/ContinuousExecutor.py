@@ -3,7 +3,6 @@ import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,7 @@ class ContinuousExecutor:
 
 
     def shutdown(self, wait=True, cancel_futures=True):
-        logger.info(f"Shutdown called with args: wait - {wait}  cancel_futures - {cancel_futures}")
+        logger.debug(f"Shutdown called with args: wait - {wait}  cancel_futures - {cancel_futures}")
         self.executor.shutdown(wait=wait, cancel_futures=cancel_futures)
         self._stop_event.set()
         #self._insert_thread.join()
