@@ -14,6 +14,7 @@ from util.ai_ext_calls import OpenAiSync
 from util.ContinuousExecutor import ContinuousExecutor
 
 logger = logging.getLogger(__name__)
+#logging.getLogger("httpx").setLevel(logging.ERROR)
 
 #NOTE I don't think I need to worry about adding to link_bank not being thread safe
 #       - Only issue I currently see is if repeat link is seen while being processed
@@ -21,6 +22,11 @@ logger = logging.getLogger(__name__)
 #NOTE Since processing logic all handled in worker func, don't need to grab results from threadpool
 
 #NOTE Moved loadenv to after super init just in case a new proc doesn't inherit env
+
+#TODO: OpenAI fallback on link fail (in case of Chinese censor)
+#   - Make the two clients (one for deep, one for openai) as class vars
+#   - Check if link passes in a client override (similar to how I'm checking for prompt override)
+#   - Add model override aswell
 
 class TextProcessor(mp.Process):
     def __init__(self, input_queue, failed_links, max_threads=10):
