@@ -9,12 +9,7 @@ from pydantic import BaseModel, Field
 
 import sys
 
-KEYRING: str = os.environ["KEYRING"]
-sys.path.insert(1, KEYRING)
-from pol_app_openai     import openai_key
-#TODO: Add deepseek client/models
-
-load_dotenv(dotenv_path="./.env")
+load_dotenv(dotenv_path="../.env")
 #load_dotenv()
 
 
@@ -37,7 +32,7 @@ class LLMSettings(BaseModel):
 class OpenAISettings(LLMSettings):
     """OpenAI-specific settings extending LLMSettings."""
 
-    api_key: str = Field(default=openai_key)
+    api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_KEY"))
     default_model: str = Field(default="gpt-4o")
     embedding_model: str = Field(default="text-embedding-3-small")
 
@@ -46,7 +41,7 @@ class DatabaseSettings(BaseModel):
     """Database connection settings."""
 
     service_url: str = Field(default_factory=lambda: os.getenv("TIMESCALE_SERVICE_URL"))
-    sql_url = service_url.replace("postgres", "postgresql", 1)
+    sql_url = Field(default_factory=lambda: os.getenv("SQL_URL"))
 
 
 class VectorStoreSettings(BaseModel):

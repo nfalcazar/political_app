@@ -29,6 +29,8 @@ async def parallel_exec(urls, prompt):
         ),
         instruction=prompt,
         extract_type="schema",
+        schema="{title: string, result: json}",
+        overlap_rate=0.05,
         # schema="{title: string, url: string, comments: int}",
         # extra_args={
         #     "temperature": 0.0,
@@ -60,11 +62,15 @@ async def single_exec(url, prompt):
         instruction=prompt,
         #extract_type="schema",
         #schema="{title: string, text: string}",
+        schema="{title: string, result: json}",
         # extra_args={
         #     "temperature": 0.0,
         #     "max_tokens": 4096,
         # },
         verbose=True,
+        # chunk_token_threshold=2000,
+        # apply_chunking=False
+        overlap_rate=0.05
     )
 
     browser_config = BrowserConfig(
@@ -88,8 +94,9 @@ if __name__ == "__main__":
     #prompt = "You are going to be given a news article, I want you to extract the article title and the body text that relates to the title."
 
     links = grab_links()
-    #res = asyncio.run(parallel_exec(links, prompt))
-    res = asyncio.run(single_exec(links[0], prompt))
+    #links = ["https://www.foxnews.com/politics/key-aide-irs-tea-party-targeting-controversy-put-leave-after-allegations-new-anti-gop-effort"]
+    res = asyncio.run(parallel_exec(links, prompt))
+    #res = asyncio.run(single_exec(links[0], prompt))
 
     for i, result in enumerate(res):
         fname = f"{i}.json"
