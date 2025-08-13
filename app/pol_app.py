@@ -5,6 +5,22 @@ directories.
 
 # TODO: Change failed_links to MP.List/Set?
 
+'''
+TODO: Focus on claims to sources for MVP
+
+Only extract from text:
+    - Claims that reference some verifiable source (study, gov data, court decisions, etc...)
+    - Either the link or a description of the source being referenced
+    - An attempt to form canonicalized claims that reference each claim
+** Make new prompt, break up system and user prompts
+
+Make two vector searchable tables:
+    - Canon Claims
+    - Facts ( to allow for counter linking, etc...)
+
+Make an edge table
+'''
+
 from datetime import datetime
 from dotenv import load_dotenv
 import logging
@@ -17,9 +33,9 @@ import pickle
 import json
 
 from text_processor import TextProcessor
-from text_collector.text_retrievers.fox_rss_retriever import FoxRssRetriever
+from routines.grab_rss_feeds import RssGrabber
 
-from text_extractor import TextExtractor
+#from text_extractor import TextExtractor
 
 
 load_dotenv(dotenv_path="./.env")
@@ -36,7 +52,7 @@ module_list = [
     "__main__",
     "text_processor",
     "text_extractor",
-    "fox_rss_retriever"
+    "grab_rss_feeds"
 ]
 for module in module_list:
     logging.getLogger(module).setLevel(logging.INFO)    
@@ -48,43 +64,17 @@ def main():
     link_queue = mp.Queue()
     failed_links = mp.Queue()
 
-    # logger.info("Starting TextProcessor")
-    # text_proc = TextProcessor(input_queue=link_queue, failed_links=failed_links, max_threads=15)
-    # text_proc.start()
+    logger.info("Starting TextProcessor")
+    text_extract = TextProcessor(link_queue, failed_links)
+    text_extract.start()
 
     logger.info("Starting Fox Rss Retriever")
-    fox_retrieve = FoxRssRetriever(link_queue)
-    fox_retrieve.proc()
+    res = RssGrabber.grab(out_queue=link_queue)
 
-    logger.info("Starting TextExtractor")
-    tmp_queue_in = mp.Queue()
-    tmp_queue_out = mp.Queue()
-    text_extract = TextExtractor(tmp_queue_in, tmp_queue_out)
-    text_extract.start()
-    time.sleep(15)
-
-    res_list = []
-    while not link_queue.empty():
-        entry = link_queue.get()
-        res_list.append(entry)
-
-    #NOTE: Hangs with full ~25 articles? Maybe just deepseek issue
-    urls = [entry['link'] for entry in res_list[:5]]
-    test_input = {
-        "source_type": "news_article",
-        "urls": urls
-    }
-    tmp_queue_in.put(test_input)
     time.sleep(10)
     logger.info("Sending Shutdown sentinel - None")
-    #link_queue.put(None)
-    #text_proc.join()
-    tmp_queue_in.put(None)
+    link_queue.put(None)
     text_extract.join()
-
-    while not tmp_queue_out.empty():
-        result = tmp_queue_out.get()
-        print(json.dumps(result, indent=2))
 
     while not failed_links.empty():
         link = failed_links.get()

@@ -37,8 +37,9 @@ class TextProcessor(mp.Process):
         self.failed_links = failed_links
         self.links_file = self.PROJ_ROOT / "data/links.pkl"
         self.max_threads = max_threads
-        with open('./prompt.txt', "r") as f:
-            self.default_prompt = f.read()
+        with open(self.PROJ_ROOT / f'app/prompts/text_extract_sys.txt', "r") as f:
+            self.default_sys_prompt = f.read()
+        
 
     
     def run(self):
@@ -57,7 +58,7 @@ class TextProcessor(mp.Process):
                 logger.info("Detected None sentinel, stopping...")
                 break
             else:
-                if link['link'] not in self.link_bank:
+                if link['link'] not in self.link_bank or link.get("forced_rerun", False):
                     thread_pool.submit(self.process_link, ai_client, link)
 
         # Wait for current links to be processed
@@ -74,12 +75,16 @@ class TextProcessor(mp.Process):
     def process_link(self, client, link):
         logger.info(f"Sending to AI: {link['link']}")
 
-        if "prompt" not in link.keys():
-            sys_prompt = self.default_prompt
-        full_prompt = f"{sys_prompt}\n\n{link['text']}"
+        if "sys_prompt" not in link.keys():
+            sys_prompt = self.default_sys_prompt
+        else:
+            sys_prompt = link["sys_prompt"]
 
         try:
-            resp = client.query(full_prompt)
+            resp = client.query(
+                user_prompt = link['text'],
+                sys_prompt = sys_prompt
+            )
 
             # Get resp json from str
             result_str = re.sub(r'^```json\s*|```$', '', str(resp))
@@ -90,16 +95,18 @@ class TextProcessor(mp.Process):
         
         # Store in file
         # TODO: Send to DB processing
-        fname = datetime.now().strftime("%Y%m%d_%H%M") + f"__{uuid.uuid4().hex}.json"
-        data_json = {
-            "filename": fname,
-            "title": link['title'],
-            "link": link['link'],
-        }
-        data_json.update(result_json)
-        fpath = self.PROJ_ROOT / f"data/{fname}"
-        with open(fpath, "w+") as f:
-            json.dump(data_json, f, indent=2)
+        if result_json.get("sources", False):
+            fname = datetime.now().strftime("%Y%m%d_%H%M") + f"__{uuid.uuid4().hex}.json"
+            data_json = {
+                "filename": fname,
+                "title": link['title'],
+                "link": link['link'],
+            }
+            data_json.update(result_json)
+            fpath = self.PROJ_ROOT / f"data/{fname}"
+            with open(fpath, "w+") as f:
+                json.dump(data_json, f, indent=2)
+                
         self.link_bank.add(link['link'])
         return
 

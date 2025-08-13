@@ -36,17 +36,25 @@ class OpenAiSync:
         return
     
 
-    def query(self, prompt, model=None):
+    def query(self, user_prompt, sys_prompt=None, model=None):
         if not model:
             model = self.default_model
+
+        prompt_list = []
+        if sys_prompt:
+            prompt_list.append({
+                "role": "system",
+                "content": sys_prompt
+            })
+        prompt_list.append({
+            "role": "user",
+            "content": user_prompt
+        })
 
         try:
             completion = self.client.chat.completions.create(
                 model=model,
-                messages=[{
-                    "role": "user",
-                    "content": prompt
-                }]
+                messages=prompt_list
             )
             return completion.choices[0].message.content
         except:
