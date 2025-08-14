@@ -107,7 +107,7 @@ class DataProcessor(mp.Process):
                 for original_claim_id, claim_info in claim_data['claim_map'].items():
                     if claim_info['canonical_id'] == original_canon_id:
                         try:
-                            self.create_edge(
+                            self.sql_store.create_edge(
                                 'canonical_claim', 
                                 new_canon_id, 
                                 'claim', 
@@ -131,7 +131,7 @@ class DataProcessor(mp.Process):
                         if source_id in source_data['source_map']:
                             new_source_id = source_data['source_map'][source_id]
                             try:
-                                self.create_edge(
+                                self.sql_store.create_edge(
                                     'claim',
                                     claim_info['new_id'],
                                     'source',
@@ -190,61 +190,7 @@ class DataProcessor(mp.Process):
             logger.error(f"Error loading {file_path}: {e}")
             raise
     
-    def create_edge(self, src_type: str, src_id: str, dest_type: str, dest_id: str, relationship_type: str, metadata: dict = None) -> str:
-        """
-        Create an edge between two entities in the database.
-        Includes deduplication to prevent duplicate edges.
-        
-        Args:
-            src_type: Source entity type (e.g., 'canonical_claim', 'claim', 'source')
-            src_id: Source entity ID
-            dest_type: Destination entity type
-            dest_id: Destination entity ID
-            relationship_type: Type of relationship (e.g., 'supports', 'refutes', 'extracted_from', 'cited_by')
-            metadata: Additional metadata for the edge
-            
-        Returns:
-            The edge ID that was created (or existing edge ID if duplicate)
-        """
-        try:
-            # Check if edge already exists
-            existing_edge = self.sql_store.get_data_by_field('edges', 'src_id', src_id)
-            if existing_edge:
-                # Check if any existing edge matches the destination and relationship
-                for edge in existing_edge:
-                    if (edge.get('dest_id') == dest_id and 
-                        edge.get('dest_type') == dest_type and 
-                        edge.get('relationship_type') == relationship_type):
-                        logger.debug(f"Edge already exists: {src_type}:{src_id} -> {dest_type}:{dest_id} ({relationship_type})")
-                        return edge['id']
-            
-            # Generate UUID for edge ID
-            edge_id = str(uuid_from_time(datetime.now()))
-            
-            # Prepare metadata
-            edge_metadata = metadata or {}
-            edge_metadata['created_at'] = datetime.now().isoformat()
-            
-            # Create edge data for SqlStore
-            edge_data = {
-                'id': edge_id,
-                'src_type': src_type,
-                'src_id': src_id,
-                'dest_type': dest_type,
-                'dest_id': dest_id,
-                'relationship_type': relationship_type,
-                'metadata_': json.dumps(edge_metadata) # Convert dictionary to JSON string
-            }
-            
-            # Insert edge using SqlStore
-            self.sql_store.insert_data('edges', edge_data)
-            logger.debug(f"Created edge {edge_id}: {src_type}:{src_id} -> {dest_type}:{dest_id} ({relationship_type})")
-            
-            return edge_id
-            
-        except Exception as e:
-            logger.error(f"Error creating edge: {e}")
-            return None
+
 
     def process_canonical_claims(self, json_data: Dict[str, Any]) -> Dict[str, List[str]]:
         """
@@ -376,7 +322,6 @@ class DataProcessor(mp.Process):
         
         Args:
             json_data: Parsed JSON data
-            session: Database session
             
         Returns:
             Dictionary with processed IDs and their metadata for edge creation
@@ -390,89 +335,31 @@ class DataProcessor(mp.Process):
             logger.warning("No claims found in JSON data")
             return processed_data
         
-        # Helper function to clean None/empty values
-        def clean_value(value):
-            if value is None or value == '' or value == 'None':
-                return ''
-            return str(value)
-        
         for claim in json_data['claims']:
-            
-            claim_text = clean_value(claim.get('text'))
-            if not claim_text:
-                logger.warning(f"Skipping claim with no text: {claim}")
-                continue
-            
-            # Check for existing claim with same text
-            existing_claim_id = None
             try:
-                existing_claim = self.sql_store.get_data_by_field('claims', 'text', claim_text)
-                if existing_claim:
-                    # Use existing claim
-                    existing_claim_id = existing_claim[0]['id']
-                    logger.debug(f"Found existing claim {existing_claim_id}")
-                else:
-                    logger.debug(f"No existing claim found")
+                # Use the new create_claim method from sql_store
+                claim_id = self.sql_store.create_claim(claim, json_data)
                 
-                if existing_claim_id:
+                if claim_id:
                     # Store mapping for edge creation
-                    original_claim_id = clean_value(claim.get('claim_id'))
-                    canonical_id = clean_value(claim.get('canonical_id'))
+                    original_claim_id = claim.get('claim_id', '')
+                    canonical_id = claim.get('canonical_id', '')
+                    
                     if original_claim_id:
                         processed_data['claim_map'][original_claim_id] = {
-                            'new_id': existing_claim_id,
+                            'new_id': claim_id,
                             'canonical_id': canonical_id
                         }
                     
-                    continue  # Skip creating new claim
+                    # Add to ids list for all processed claims (both new and existing)
+                    processed_data['ids'].append(claim_id)
+                    
+                    logger.debug(f"Processed claim {claim_id}")
+                else:
+                    logger.warning(f"Failed to process claim: {claim}")
                     
             except Exception as e:
-                logger.warning(f"Error checking for existing claim: {e}")
-                # Continue with creating new claim
-            
-            # Generate UUID for unique claim ID
-            claim_id = str(uuid_from_time(datetime.now()))
-            
-            # Create claim data for SqlStore
-            claim_data = {
-                'id': claim_id,
-                'text': claim_text,
-                'speaker': clean_value(claim.get('speaker')),
-                'date': clean_value(claim.get('published_date')),
-                'verified': False,  # Always initialize to False
-                'metadata_': json.dumps({
-                    'original_claim_id': clean_value(claim.get('claim_id')),
-                    'canonical_id': clean_value(claim.get('canonical_id')),
-                    'outlet': clean_value(claim.get('outlet')),
-                    'matched_source_ids': claim.get('matched_source_ids') or [],
-                    'judgment': clean_value(claim.get('judgment')),
-                    'rationale': clean_value(claim.get('rationale')),
-                    'confidence': clean_value(claim.get('confidence')),
-                    'tags': claim.get('tags') or [],
-                    'source_file': clean_value(json_data.get('filename')) or 'unknown',
-                    'source_title': clean_value(json_data.get('title')),
-                    'source_link': clean_value(json_data.get('link')),
-                    'created_at': datetime.now().isoformat()
-                })
-            }
-            
-            # Insert claim using SqlStore
-            try:
-                self.sql_store.insert_data('claims', claim_data)
-                processed_data['ids'].append(claim_id)
-                
-                # Store mapping for edge creation
-                original_claim_id = claim.get('claim_id', '')
-                canonical_id = claim.get('canonical_id', '')
-                if original_claim_id:
-                    processed_data['claim_map'][original_claim_id] = {
-                        'new_id': claim_id,
-                        'canonical_id': canonical_id
-                    }
-                
-                logger.debug(f"Processed new claim {claim_id}")
-            except Exception as e:
-                logger.error(f"Error inserting claim {claim_id}: {e}")
+                logger.error(f"Error processing claim: {e}")
                 continue
         
         return processed_data
@@ -484,7 +371,6 @@ class DataProcessor(mp.Process):
         
         Args:
             json_data: Parsed JSON data
-            session: Database session
             
         Returns:
             Dictionary with processed IDs and their metadata for edge creation
@@ -498,104 +384,26 @@ class DataProcessor(mp.Process):
             logger.warning("No sources found in JSON data")
             return processed_data
         
-        # Helper function to clean None/empty values
-        def clean_value(value):
-            if value is None or value == '' or value == 'None':
-                return ''
-            return str(value)
-        
         for source in json_data['sources']:
-            
-            source_title = clean_value(source.get('title'))
-            source_url = clean_value(source.get('url'))
-            match_status = clean_value(source.get('match_status', ''))
-            
-            # Initialize variables that might be used later
-            description = source_title
-            publisher = clean_value(source.get('publisher_or_court'))
-            search_queries = source.get('search_query') or []
-            if search_queries is None:
-                search_queries = []
-            
-            # If source_url is missing or match_status is "unresolved", create a synthetic URL
-            if not source_url or match_status == "unresolved":
-                
-                # Combine all components into a synthetic URL
-                components = []
-                if description:
-                    components.append(description)
-                if publisher:
-                    components.append(publisher)
-                if search_queries:
-                    components.extend(search_queries)
-                
-                if components:
-                    source_url = ' '.join(components).strip()
-                    if match_status == "unresolved":
-                        logger.debug(f"Created synthetic URL for unresolved source: {source_url}")
-                    else:
-                        logger.debug(f"Created synthetic URL for source with missing URL: {source_url}")
-                else:
-                    logger.warning(f"Skipping source with no URL and no identifying information: {source}")
-                    continue
-            
-            # Check for existing source with same URL only
-            existing_source_id = None
             try:
-                existing_source = self.sql_store.get_data_by_field('sources', 'link', source_url)
-                if existing_source:
-                    existing_source_id = existing_source[0]['id']
-                    logger.debug(f"Found existing source {existing_source_id}")
-                else:
-                    logger.debug(f"No existing source found for URL")
+                # Use the new create_source method from sql_store
+                source_id = self.sql_store.create_source(source, json_data)
                 
-                if existing_source_id:
+                if source_id:
                     # Store mapping for edge creation
                     original_source_id = source.get('source_id', '')
                     if original_source_id:
-                        processed_data['source_map'][original_source_id] = existing_source_id
+                        processed_data['source_map'][original_source_id] = source_id
                     
-                    continue  # Skip creating new source
+                    # Add to ids list for all processed sources (both new and existing)
+                    processed_data['ids'].append(source_id)
+                    
+                    logger.debug(f"Processed source {source_id}")
+                else:
+                    logger.warning(f"Failed to process source: {source}")
                     
             except Exception as e:
-                logger.warning(f"Error checking for existing source: {e}")
-                # Continue with creating new source
-            
-            # Generate UUID for unique source ID
-            source_id = str(uuid_from_time(datetime.now()))
-            
-            # Create source data for SqlStore
-            source_data = {
-                'id': source_id,
-                'description': source_title,  # Already converted None to empty string
-                'link': source_url,  # Use the URL (real or synthetic)
-                'verified': False,  # Always initialize to False
-                'metadata_': json.dumps({
-                    'original_source_id': clean_value(source.get('source_id')),
-                    'source_type': clean_value(source.get('source_type')),
-                    'publisher_or_court': publisher,  # Already cleaned
-                    'match_status': clean_value(source.get('match_status')),
-                    'search_query': search_queries,  # Already cleaned
-                    'source_file': clean_value(json_data.get('filename')) or 'unknown',
-                    'source_title': clean_value(json_data.get('title')),
-                    'source_link': clean_value(json_data.get('link')),
-                    'created_at': datetime.now().isoformat()
-                })
-            }
-            
-            # Insert source using SqlStore
-            try:
-                self.sql_store.insert_data('sources', source_data)
-                processed_data['ids'].append(source_id)
-                
-                # Store mapping for edge creation
-                original_source_id = source.get('source_id', '')
-                if original_source_id:
-                    processed_data['source_map'][original_source_id] = source_id
-                
-                logger.debug(f"Processed new source {source_id}")
-            except Exception as e:
-                logger.error(f"Error inserting source {source_id}: {e}")
+                logger.error(f"Error processing source: {e}")
                 continue
         
         return processed_data

@@ -4,11 +4,17 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from os import getenv
 from pathlib import Path
+import json
+import logging
+from datetime import datetime
+from timescale_vector.client import uuid_from_time
 
 # Load environment variables from .env file relative to this file's location
 current_file = Path(__file__)
 env_file = current_file.parent.parent / ".env"
 load_dotenv(dotenv_path=env_file)
+
+logger = logging.getLogger(__name__)
 
 class SqlStore:
     def __init__(self):
@@ -103,3 +109,215 @@ class SqlStore:
                 return result.rowcount
         except Exception as e:
             raise Exception(f"Error deleting data from {table_name} with id {id}: {str(e)}")
+
+    def create_edge(self, src_type: str, src_id: str, dest_type: str, dest_id: str, relationship_type: str, metadata: dict = None) -> str:
+        """
+        Create an edge between two entities in the database.
+        Includes deduplication to prevent duplicate edges.
+        
+        Args:
+            src_type: Source entity type (e.g., 'canonical_claim', 'claim', 'source')
+            src_id: Source entity ID
+            dest_type: Destination entity type
+            dest_id: Destination entity ID
+            relationship_type: Type of relationship (e.g., 'supports', 'refutes', 'extracted_from', 'cited_by')
+            metadata: Additional metadata for the edge
+            
+        Returns:
+            The edge ID that was created (or existing edge ID if duplicate)
+        """
+        try:
+            # Check if edge already exists
+            existing_edge = self.get_data_by_field('edges', 'src_id', src_id)
+            if existing_edge:
+                # Check if any existing edge matches the destination and relationship
+                for edge in existing_edge:
+                    if (edge.get('dest_id') == dest_id and 
+                        edge.get('dest_type') == dest_type and 
+                        edge.get('relationship_type') == relationship_type):
+                        logger.debug(f"Edge already exists: {src_type}:{src_id} -> {dest_type}:{dest_id} ({relationship_type})")
+                        return edge['id']
+            
+            # Generate UUID for edge ID
+            edge_id = str(uuid_from_time(datetime.now()))
+            
+            # Prepare metadata
+            edge_metadata = metadata or {}
+            edge_metadata['created_at'] = datetime.now().isoformat()
+            
+            # Create edge data for SqlStore
+            edge_data = {
+                'id': edge_id,
+                'src_type': src_type,
+                'src_id': src_id,
+                'dest_type': dest_type,
+                'dest_id': dest_id,
+                'relationship_type': relationship_type,
+                'metadata_': json.dumps(edge_metadata) # Convert dictionary to JSON string
+            }
+            
+            # Insert edge using SqlStore
+            self.insert_data('edges', edge_data)
+            logger.debug(f"Created edge {edge_id}: {src_type}:{src_id} -> {dest_type}:{dest_id} ({relationship_type})")
+            
+            return edge_id
+            
+        except Exception as e:
+            logger.error(f"Error creating edge: {e}")
+            return None
+
+    def create_claim(self, claim_data: dict, json_data: dict = None) -> str:
+        """
+        Create a claim in the database with deduplication logic.
+        
+        Args:
+            claim_data: Dictionary containing claim information
+            json_data: Optional JSON data for metadata
+            
+        Returns:
+            The claim ID that was created (or existing claim ID if duplicate)
+        """
+        try:
+            # Helper function to clean None/empty values
+            def clean_value(value):
+                if value is None or value == '' or value == 'None':
+                    return ''
+                return str(value)
+            
+            claim_text = clean_value(claim_data.get('text'))
+            if not claim_text:
+                logger.warning(f"Skipping claim with no text: {claim_data}")
+                return None
+            
+            # Check for existing claim with same text
+            existing_claim = self.get_data_by_field('claims', 'text', claim_text)
+            if existing_claim:
+                # Use existing claim
+                existing_claim_id = existing_claim[0]['id']
+                logger.debug(f"Found existing claim {existing_claim_id}")
+                return existing_claim_id
+            
+            # Generate UUID for unique claim ID
+            claim_id = str(uuid_from_time(datetime.now()))
+            
+            # Create claim data for SqlStore
+            claim_insert_data = {
+                'id': claim_id,
+                'text': claim_text,
+                'speaker': clean_value(claim_data.get('speaker')),
+                'date': clean_value(claim_data.get('published_date')),
+                'verified': False,  # Always initialize to False
+                'metadata_': json.dumps({
+                    'original_claim_id': clean_value(claim_data.get('claim_id')),
+                    'canonical_id': clean_value(claim_data.get('canonical_id')),
+                    'outlet': clean_value(claim_data.get('outlet')),
+                    'matched_source_ids': claim_data.get('matched_source_ids') or [],
+                    'judgment': clean_value(claim_data.get('judgment')),
+                    'rationale': clean_value(claim_data.get('rationale')),
+                    'confidence': clean_value(claim_data.get('confidence')),
+                    'tags': claim_data.get('tags') or [],
+                    'source_file': clean_value(json_data.get('filename')) if json_data else 'unknown',
+                    'source_title': clean_value(json_data.get('title')) if json_data else '',
+                    'source_link': clean_value(json_data.get('link')) if json_data else '',
+                    'created_at': datetime.now().isoformat()
+                })
+            }
+            
+            # Insert claim using SqlStore
+            self.insert_data('claims', claim_insert_data)
+            logger.debug(f"Created new claim {claim_id}")
+            
+            return claim_id
+            
+        except Exception as e:
+            logger.error(f"Error creating claim: {e}")
+            return None
+
+    def create_source(self, source_data: dict, json_data: dict = None) -> str:
+        """
+        Create a source in the database with deduplication logic.
+        
+        Args:
+            source_data: Dictionary containing source information
+            json_data: Optional JSON data for metadata
+            
+        Returns:
+            The source ID that was created (or existing source ID if duplicate)
+        """
+        try:
+            # Helper function to clean None/empty values
+            def clean_value(value):
+                if value is None or value == '' or value == 'None':
+                    return ''
+                return str(value)
+            
+            source_title = clean_value(source_data.get('title'))
+            source_url = clean_value(source_data.get('url'))
+            match_status = clean_value(source_data.get('match_status', ''))
+            
+            # Initialize variables that might be used later
+            description = source_title
+            publisher = clean_value(source_data.get('publisher_or_court'))
+            search_queries = source_data.get('search_query') or []
+            if search_queries is None:
+                search_queries = []
+            
+            # If source_url is missing or match_status is "unresolved", create a synthetic URL
+            if not source_url or match_status == "unresolved":
+                # Combine all components into a synthetic URL
+                components = []
+                if description:
+                    components.append(description)
+                if publisher:
+                    components.append(publisher)
+                if search_queries:
+                    components.extend(search_queries)
+                
+                if components:
+                    source_url = ' '.join(components).strip()
+                    if match_status == "unresolved":
+                        logger.debug(f"Created synthetic URL for unresolved source: {source_url}")
+                    else:
+                        logger.debug(f"Created synthetic URL for source with missing URL: {source_url}")
+                else:
+                    logger.warning(f"Skipping source with no URL and no identifying information: {source_data}")
+                    return None
+            
+            # Check for existing source with same URL only
+            existing_source = self.get_data_by_field('sources', 'link', source_url)
+            if existing_source:
+                existing_source_id = existing_source[0]['id']
+                logger.debug(f"Found existing source {existing_source_id}")
+                return existing_source_id
+            
+            # Generate UUID for unique source ID
+            source_id = str(uuid_from_time(datetime.now()))
+            
+            # Create source data for SqlStore
+            source_insert_data = {
+                'id': source_id,
+                'description': source_title,  # Already converted None to empty string
+                'link': source_url,  # Use the URL (real or synthetic)
+                'verified': False,  # Always initialize to False
+                'metadata_': json.dumps({
+                    'original_source_id': clean_value(source_data.get('source_id')),
+                    'source_type': clean_value(source_data.get('source_type')),
+                    'publisher_or_court': publisher,  # Already cleaned
+                    'match_status': clean_value(source_data.get('match_status')),
+                    'search_query': search_queries,  # Already cleaned
+                    'source_file': clean_value(json_data.get('filename')) if json_data else 'unknown',
+                    'source_title': clean_value(json_data.get('title')) if json_data else '',
+                    'source_link': clean_value(json_data.get('link')) if json_data else '',
+                    'created_at': datetime.now().isoformat()
+                })
+            }
+            
+            # Insert source using SqlStore
+            self.insert_data('sources', source_insert_data)
+            logger.debug(f"Created new source {source_id}")
+            
+            return source_id
+            
+        except Exception as e:
+            logger.error(f"Error creating source: {e}")
+            return None
