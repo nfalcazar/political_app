@@ -50,15 +50,22 @@ def create_graph_visualizer(
     
     edges_df = pd.read_sql(query, engine)
     
+    # Color scheme for different node types
+    node_colors = {
+        'claim': '#96ceb4',      # Green
+        'canonical_claim': '#4ecdc4', # Teal
+        'source': '#ff6b6b',       # Red
+        'facts': '#45b7d1'        # Blue (fallback)
+    }
+    
     # Get all unique node IDs and their types
     all_nodes = set()
     for _, row in edges_df.iterrows():
         all_nodes.add((row['src_id'], row['src_type']))
         all_nodes.add((row['dest_id'], row['dest_type']))
     
-    # Debug: Print unique node types
+    # Get unique node types for debugging
     unique_types = set(node_type for _, node_type in all_nodes)
-    print(f"Found node types: {unique_types}")
     
     # Fetch content for each node type
     node_contents = {}
@@ -66,65 +73,40 @@ def create_graph_visualizer(
     # Fetch claims content
     claims_ids = [node_id for node_id, node_type in all_nodes if node_type == 'claim']
     if claims_ids:
-        print(f"Fetching content for {len(claims_ids)} claims")
         claims_query = f"""
         SELECT id, text FROM claims 
         WHERE id IN ({','.join([f"'{id}'" for id in claims_ids])})
         """
         claims_df = pd.read_sql(claims_query, engine)
-        print(f"Found {len(claims_df)} claims with content")
         for _, row in claims_df.iterrows():
             node_contents[row['id']] = row['text']
-        print(f"Sample claim content: {list(node_contents.values())[0] if node_contents else 'None'}")
     
     # Fetch canonical_claims content
     canonical_claims_ids = [node_id for node_id, node_type in all_nodes if node_type == 'canonical_claim']
     if canonical_claims_ids:
-        print(f"Fetching content for {len(canonical_claims_ids)} canonical_claims")
-        print(f"Sample canonical_claim ID from edges: {canonical_claims_ids[0] if canonical_claims_ids else 'None'}")
-        
-        # First, let's see what IDs are actually in the canon_claims table
-        all_canon_claims_query = "SELECT id FROM canon_claims LIMIT 5"
-        all_canon_claims_df = pd.read_sql(all_canon_claims_query, engine)
-        print(f"Sample IDs from canon_claims table: {list(all_canon_claims_df['id'])}")
-        
         canonical_claims_query = f"""
         SELECT id, contents FROM canon_claims 
         WHERE id IN ({','.join([f"'{id}'" for id in canonical_claims_ids])})
         """
         canonical_claims_df = pd.read_sql(canonical_claims_query, engine)
-        print(f"Found {len(canonical_claims_df)} canonical_claims with content")
-        print(f"IDs found in canon_claims table: {list(canonical_claims_df['id'])}")
         
         for _, row in canonical_claims_df.iterrows():
             # Convert UUID to string for matching
             node_id = str(row['id'])
             node_contents[node_id] = row['contents']
-        print(f"Sample canonical_claim content: {list(node_contents.values())[-1] if node_contents else 'None'}")
-        print(f"Sample canonical_claim ID: {canonical_claims_ids[0] if canonical_claims_ids else 'None'}")
     
     # Fetch sources content
     sources_ids = [node_id for node_id, node_type in all_nodes if node_type == 'source']
     if sources_ids:
-        print(f"Fetching content for {len(sources_ids)} sources")
         sources_query = f"""
-        SELECT id, description FROM sources 
+        SELECT id, link FROM sources 
         WHERE id IN ({','.join([f"'{id}'" for id in sources_ids])})
         """
         sources_df = pd.read_sql(sources_query, engine)
-        print(f"Found {len(sources_df)} sources with content")
         for _, row in sources_df.iterrows():
-            node_contents[row['id']] = row['description']
-        print(f"Sample source content: {list(node_contents.values())[-1] if node_contents else 'None'}")
+            node_contents[row['id']] = row['link']
     
-    print(f"Total content entries loaded: {len(node_contents)}")
-    
-    # Debug: Check canonical_claims in node_contents
-    canonical_claim_contents = {k: v for k, v in node_contents.items() if k in canonical_claims_ids}
-    print(f"Canonical claims in node_contents: {len(canonical_claim_contents)}")
-    if canonical_claim_contents:
-        sample_id = list(canonical_claim_contents.keys())[0]
-        print(f"Sample canonical_claim in node_contents - ID: {sample_id}, Content: {canonical_claim_contents[sample_id][:50]}...")
+    print(f"Loaded content for {len(node_contents)} nodes")
     
     if edges_df.empty:
         print("No edges found in the database.")
@@ -142,14 +124,6 @@ def create_graph_visualizer(
         font_color="#000000"
     )
     
-    # Color scheme for different node types
-    node_colors = {
-        'claims': '#ff6b6b',      # Red
-        'canon_claims': '#4ecdc4', # Teal
-        'facts': '#45b7d1',       # Blue
-        'sources': '#96ceb4'      # Green
-    }
-    
     # Track added nodes to avoid duplicates
     added_nodes = set()
     
@@ -164,12 +138,11 @@ def create_graph_visualizer(
             content = node_contents.get(row['src_id'], 'No content available')
             # Truncate content for tooltip (HTML tooltips have limits)
             content_preview = content[:200] + "..." if len(content) > 200 else content
-            if row['src_type'] == 'canonical_claim':
-                print(f"Adding canonical_claim node {row['src_id']} with content: {content_preview[:50]}...")
+            node_color = node_colors.get(row['src_type'], '#cccccc')
             net.add_node(
                 row['src_id'], 
                 label=src_label,
-                color=node_colors.get(row['src_type'], '#cccccc'),
+                color=node_color,
                 title=f"Type: {row['src_type']}\nID: {row['src_id']}\n\nContent:\n{content_preview}"
             )
             added_nodes.add(row['src_id'])
@@ -179,12 +152,11 @@ def create_graph_visualizer(
             content = node_contents.get(row['dest_id'], 'No content available')
             # Truncate content for tooltip (HTML tooltips have limits)
             content_preview = content[:200] + "..." if len(content) > 200 else content
-            if row['dest_type'] == 'canonical_claim':
-                print(f"Adding canonical_claim node {row['dest_id']} with content: {content_preview[:50]}...")
+            node_color = node_colors.get(row['dest_type'], '#cccccc')
             net.add_node(
                 row['dest_id'], 
                 label=dest_label,
-                color=node_colors.get(row['dest_type'], '#cccccc'),
+                color=node_color,
                 title=f"Type: {row['dest_type']}\nID: {row['dest_id']}\n\nContent:\n{content_preview}"
             )
             added_nodes.add(row['dest_id'])
@@ -249,4 +221,4 @@ if __name__ == "__main__":
     create_graph_visualizer()
     
     # Also create a sample visualization with limited data
-    visualize_sample_data(20)
+    #visualize_sample_data(20)

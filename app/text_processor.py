@@ -29,14 +29,16 @@ logger = logging.getLogger(__name__)
 #   - Add model override aswell
 
 class TextProcessor(mp.Process):
-    def __init__(self, input_queue, failed_links, max_threads=10):
+    def __init__(self, input_queue, failed_links, output_queue=None, max_threads=10, save_data=True):
         super().__init__()
-        load_dotenv(dotenv_path="./.env")
+        load_dotenv()
         self.PROJ_ROOT = Path(os.environ["PROJ_ROOT"])
         self.input_queue = input_queue
+        self.output_queue = output_queue
         self.failed_links = failed_links
         self.links_file = self.PROJ_ROOT / "data/links.pkl"
         self.max_threads = max_threads
+        self.save_data = save_data
         with open(self.PROJ_ROOT / f'app/prompts/text_extract_sys.txt', "r") as f:
             self.default_sys_prompt = f.read()
         
@@ -109,8 +111,11 @@ class TextProcessor(mp.Process):
             }
             data_json.update(result_json)
             fpath = self.PROJ_ROOT / f"data/{fname}"
-            with open(fpath, "w+") as f:
-                json.dump(data_json, f, indent=2)
+            if self.save_data:
+                with open(fpath, "w+") as f:
+                    json.dump(data_json, f, indent=2)
+            if self.output_queue:
+                self.output_queue.put(data_json)
 
         self.link_bank.add(link['link'])
         return

@@ -3,8 +3,12 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from os import getenv
+from pathlib import Path
 
-load_dotenv(dotenv_path="../../.env")
+# Load environment variables from .env file relative to this file's location
+current_file = Path(__file__)
+env_file = current_file.parent.parent / ".env"
+load_dotenv(dotenv_path=env_file)
 
 class SqlStore:
     def __init__(self):
@@ -44,6 +48,39 @@ class SqlStore:
 
     def query_data(self, query):
         pass
+
+    def get_data_by_field(self, table_name, field_name, field_value):
+        """
+        Get data from a table by a specific field value.
+        
+        Args:
+            table_name (str): Name of the table to query
+            field_name (str): Name of the field to search by
+            field_value: Value to search for
+            
+        Returns:
+            list: List of dictionaries containing the matching records
+        """
+        if not table_name or not field_name:
+            raise ValueError("Table name and field name cannot be empty")
+        
+        # Build the SELECT statement
+        select_query = f"SELECT * FROM {table_name} WHERE {field_name} = :field_value"
+        
+        try:
+            with self.engine.connect() as connection:
+                result = connection.execute(text(select_query), {"field_value": field_value})
+                rows = result.fetchall()
+                
+                # Convert to list of dictionaries
+                if rows:
+                    columns = result.keys()
+                    return [dict(zip(columns, row)) for row in rows]
+                else:
+                    return []
+                    
+        except Exception as e:
+            raise Exception(f"Error querying data from {table_name} where {field_name} = {field_value}: {str(e)}")
 
     def delete_data(self, table_name, id):
         """

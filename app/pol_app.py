@@ -66,28 +66,35 @@ def main():
     db = DbInit()
     db.create_tables()
 
-    link_queue = mp.Queue()
+    text_proc_in_queue = mp.Queue()
+    data_proc_in_queue = mp.Queue()
     failed_links = mp.Queue()
 
-    # logger.info("Starting TextProcessor")
-    # text_extract = TextProcessor(link_queue, failed_links)
-    # text_extract.start()
-
-    # logger.info("Starting Fox Rss Retriever")
-    # res = RssGrabber.grab(out_queue=link_queue)
-
-    # time.sleep(10)
-    # logger.info("Sending Shutdown sentinel - None")
-    # link_queue.put(None)
-    # text_extract.join()
-
-    # while not failed_links.empty():
-    #     link = failed_links.get()
-    #     logger.info(f"Failed to get data for link - {link}")
-
     logger.info("Starting DataProcessor")
-    data_processor = DataProcessor()
-    data_processor.process_all_files()
+    data_processor = DataProcessor(data_proc_in_queue)
+    data_processor.start()
+
+    logger.info("Starting TextProcessor")
+    text_extract = TextProcessor(
+        text_proc_in_queue,
+        failed_links,
+        output_queue=data_proc_in_queue
+    )
+    text_extract.start()
+
+    logger.info("Starting Fox Rss Retriever")
+    res = RssGrabber.grab(out_queue=text_proc_in_queue)
+
+    time.sleep(20)
+    logger.info("Sending Shutdown sentinel - None")
+    text_proc_in_queue.put(None)
+    text_extract.join()
+    data_proc_in_queue.put(None)
+    data_processor.join()
+
+    while not failed_links.empty():
+        link = failed_links.get()
+        logger.info(f"Failed to get data for link - {link}")
 
     logger.info("Shut down Top Level Process")
     return

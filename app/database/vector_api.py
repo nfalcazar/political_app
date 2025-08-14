@@ -23,7 +23,7 @@ class VectorStore:
 
     def __init__(self, table_name : str):
         """Initialize the VectorStore with settings, OpenAI client, and Timescale Vector client."""
-        self.ai_client = OpenAiSync()
+        self.ai_client = OpenAiSync(provider="openai")
         self.emded_size = self.ai_client.default_emded_size
         self.time_partition_interval = timedelta(days=7)
         self.table_name = table_name
