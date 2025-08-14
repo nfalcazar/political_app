@@ -7,18 +7,15 @@ directories.
 
 '''
 TODO: Focus on claims to sources for MVP
+    - Make new module to find links for unresolved sources
+        * Google Cust search should be cheap enough to scan all unresolved sources
+        * Can make util to return top x% of sources based on connections for human verification
+    - Add more RSS feeds (NYT, WSJ, CNN, etc...)
+    - Extract facts from primary, reliable sources
+    - Compare similar facts (supports, counters, etc...)
+    - Decide: Link facts to canon claims or rely on graph traversal
 
-Only extract from text:
-    - Claims that reference some verifiable source (study, gov data, court decisions, etc...)
-    - Either the link or a description of the source being referenced
-    - An attempt to form canonicalized claims that reference each claim
-** Make new prompt, break up system and user prompts
-
-Make two vector searchable tables:
-    - Canon Claims
-    - Facts ( to allow for counter linking, etc...)
-
-Make an edge table
+TODO: Start including cost estimates for each step/module
 '''
 
 from datetime import datetime

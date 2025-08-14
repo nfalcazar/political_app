@@ -67,10 +67,6 @@ class DataProcessor(mp.Process):
                 # Process the JSON object
                 try:
                     results = self.process_json(item)
-                    # logger.info(f"Successfully processed JSON object: "
-                    #           f"{len(results['canonical_claims'])} canonical claims, "
-                    #           f"{len(results['claims'])} claims, "
-                    #           f"{len(results['sources'])} sources")
                 except Exception as e:
                     logger.error(f"Error processing JSON object: {e}")
                     continue
@@ -512,6 +508,7 @@ class DataProcessor(mp.Process):
             
             source_title = clean_value(source.get('title'))
             source_url = clean_value(source.get('url'))
+            match_status = clean_value(source.get('match_status', ''))
             
             # Initialize variables that might be used later
             description = source_title
@@ -520,8 +517,8 @@ class DataProcessor(mp.Process):
             if search_queries is None:
                 search_queries = []
             
-            # If source_url is missing, create a synthetic URL using description, publisher, and search queries
-            if not source_url:
+            # If source_url is missing or match_status is "unresolved", create a synthetic URL
+            if not source_url or match_status == "unresolved":
                 
                 # Combine all components into a synthetic URL
                 components = []
@@ -534,7 +531,10 @@ class DataProcessor(mp.Process):
                 
                 if components:
                     source_url = ' '.join(components).strip()
-                    logger.debug(f"Created synthetic URL for source: {source_url}")
+                    if match_status == "unresolved":
+                        logger.debug(f"Created synthetic URL for unresolved source: {source_url}")
+                    else:
+                        logger.debug(f"Created synthetic URL for source with missing URL: {source_url}")
                 else:
                     logger.warning(f"Skipping source with no URL and no identifying information: {source}")
                     continue
