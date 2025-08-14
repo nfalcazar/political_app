@@ -80,9 +80,14 @@ class TextProcessor(mp.Process):
         else:
             sys_prompt = link["sys_prompt"]
 
+        if "published" in link.keys():
+            u_prompt = f"Published: {link['published']}\n{link['text']}"
+        else:
+            u_prompt = link['text']
+
         try:
             resp = client.query(
-                user_prompt = link['text'],
+                user_prompt = u_prompt,
                 sys_prompt = sys_prompt
             )
 
@@ -106,7 +111,7 @@ class TextProcessor(mp.Process):
             fpath = self.PROJ_ROOT / f"data/{fname}"
             with open(fpath, "w+") as f:
                 json.dump(data_json, f, indent=2)
-                
+
         self.link_bank.add(link['link'])
         return
 

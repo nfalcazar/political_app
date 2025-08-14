@@ -1,12 +1,19 @@
 import logging
 import time
 from typing import Any, List, Optional, Tuple, Union
-from datetime import datetime
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from os import getenv
+from pathlib import Path
 
 import pandas as pd
-from settings import get_settings
-from openai import OpenAI
+from util.ai_ext_calls import OpenAiSync
 from timescale_vector import client
+
+# Load environment variables from .env file relative to this file's location
+current_file = Path(__file__)
+env_file = current_file.parent.parent / ".env"
+load_dotenv(dotenv_path=env_file)
 
 #NOTE: Mainly copied from youtube example
 #TODO: Proper citation/licensing, strip for my use case
@@ -14,17 +21,17 @@ from timescale_vector import client
 class VectorStore:
     """A class for managing vector operations and database interactions."""
 
-    def __init__(self):
+    def __init__(self, table_name : str):
         """Initialize the VectorStore with settings, OpenAI client, and Timescale Vector client."""
-        self.settings = get_settings()
-        self.openai_client = OpenAI(api_key=self.settings.openai.api_key)
-        self.embedding_model = self.settings.openai.embedding_model
-        self.vector_settings = self.settings.vector_store
+        self.ai_client = OpenAiSync()
+        self.emded_size = self.ai_client.default_emded_size
+        self.time_partition_interval = timedelta(days=7)
+        self.table_name = table_name
         self.vec_client = client.Sync(
-            self.settings.database.service_url,
-            self.vector_settings.table_name,
-            self.vector_settings.embedding_dimensions,
-            time_partition_interval=self.vector_settings.time_partition_interval,
+            getenv("TIMESCALE_SERVICE_URL"),
+            self.table_name,
+            self.emded_size,
+            time_partition_interval=self.time_partition_interval,
         )
 
     def get_embedding(self, text: str) -> List[float]:
@@ -38,18 +45,9 @@ class VectorStore:
             A list of floats representing the embedding.
         """
         text = text.replace("\n", " ")
-        start_time = time.time()
-        embedding = (
-            self.openai_client.embeddings.create(
-                input=[text],
-                model=self.embedding_model,
-            )
-            .data[0]
-            .embedding
-        )
-        elapsed_time = time.time() - start_time
-        logging.info(f"Embedding generated in {elapsed_time:.3f} seconds")
-        return embedding
+        return self.ai_client.get_embedding(text)
+
+        
 
     def create_tables(self) -> None:
         """Create the necessary tablesin the database"""
@@ -71,10 +69,13 @@ class VectorStore:
             df: A pandas DataFrame containing the data to insert or update.
                 Expected columns: id, metadata, contents, embedding
         """
+        if "verified" in df.columns:
+            df["verified"] = df["verified"].map(lambda x: bool(x))
+            df["verified"] = df["verified"].astype("object")
         records = df.to_records(index=False)
         self.vec_client.upsert(list(records))
         logging.info(
-            f"Inserted {len(df)} records into {self.vector_settings.table_name}"
+            f"Inserted {len(df)} records into {self.table_name}"
         )
 
     def search_by_text(
@@ -251,14 +252,14 @@ class VectorStore:
 
         if delete_all:
             self.vec_client.delete_all()
-            logging.info(f"Deleted all records from {self.vector_settings.table_name}")
+            logging.info(f"Deleted all records from {self.table_name}")
         elif ids:
             self.vec_client.delete_by_ids(ids)
             logging.info(
-                f"Deleted {len(ids)} records from {self.vector_settings.table_name}"
+                f"Deleted {len(ids)} records from {self.table_name}"
             )
         elif metadata_filter:
             self.vec_client.delete_by_metadata(metadata_filter)
             logging.info(
-                f"Deleted records matching metadata filter from {self.vector_settings.table_name}"
+                f"Deleted records matching metadata filter from {self.table_name}"
             )

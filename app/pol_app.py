@@ -34,6 +34,8 @@ import json
 
 from text_processor import TextProcessor
 from routines.grab_rss_feeds import RssGrabber
+from database.init_db import DbInit
+from data_processor import DataProcessor
 
 #from text_extractor import TextExtractor
 
@@ -52,7 +54,7 @@ module_list = [
     "__main__",
     "text_processor",
     "text_extractor",
-    "grab_rss_feeds"
+    "data_processor"
 ]
 for module in module_list:
     logging.getLogger(module).setLevel(logging.INFO)    
@@ -61,24 +63,31 @@ logger = logging.getLogger(__name__)
 
 def main():
     logger.info("Starting Top Level Process")
+    db = DbInit()
+    db.create_tables()
+
     link_queue = mp.Queue()
     failed_links = mp.Queue()
 
-    logger.info("Starting TextProcessor")
-    text_extract = TextProcessor(link_queue, failed_links)
-    text_extract.start()
+    # logger.info("Starting TextProcessor")
+    # text_extract = TextProcessor(link_queue, failed_links)
+    # text_extract.start()
 
-    logger.info("Starting Fox Rss Retriever")
-    res = RssGrabber.grab(out_queue=link_queue)
+    # logger.info("Starting Fox Rss Retriever")
+    # res = RssGrabber.grab(out_queue=link_queue)
 
-    time.sleep(10)
-    logger.info("Sending Shutdown sentinel - None")
-    link_queue.put(None)
-    text_extract.join()
+    # time.sleep(10)
+    # logger.info("Sending Shutdown sentinel - None")
+    # link_queue.put(None)
+    # text_extract.join()
 
-    while not failed_links.empty():
-        link = failed_links.get()
-        logger.info(f"Failed to get data for link - {link}")
+    # while not failed_links.empty():
+    #     link = failed_links.get()
+    #     logger.info(f"Failed to get data for link - {link}")
+
+    logger.info("Starting DataProcessor")
+    data_processor = DataProcessor()
+    data_processor.process_all_files()
 
     logger.info("Shut down Top Level Process")
     return

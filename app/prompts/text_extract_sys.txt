@@ -42,13 +42,13 @@ C. Group claims into canonical claims (dedupe by semantic equivalence + same ref
 
 ## OUTPUT RULES
 - Return **JSON ONLY** that conforms exactly to the contract provided below.
-- Use stable, deterministic IDs:
-  - `source_id`: sha256(lowercase(normalized_identifier_or_url)) first 24 hex chars.
-  - `claim_id`: sha256(lowercase(canonical_claim_text + speaker + date_published)) first 24 hex chars.
-  - `canonical_id`: sha256(lowercase(canonical_text)) first 24 hex chars.
-- Dates in ISO 8601 (YYYY-MM-DD).
-- Omit fields you cannot reasonably infer, except required keys; for required fields with no value, set `null`.
-- Do not fabricate DOI/citations; if unresolved, set `match_status":"unresolved"` and include best surface clues.
+- Use running counts of items for ids, starting at 0:
+  - `source_id`: source_#
+  - `claim_id`: claim_#
+  - `canonical_id`: canon_#
+- Dates in ISO 8601 (YYYY-MM-DD) If no year is specified, assume 2025.
+- Omit fields you cannot reasonably infer, except required keys; for required fields with no value, set `None`.
+- Do not fabricate DOI/citations; if unresolved, set `match_status":"unresolved"` and include best keywords or phrases to use in a search query.
 
 ## JUDGMENT GUIDANCE
 - "accurate": The cited source, in context, supports the claim as stated.
@@ -76,30 +76,25 @@ JSON Structure:
 {
   "canonical_claims": [
     {
-      "canonical_id": "string (sha256_24)",
+      "canonical_id": "string (canon_#)",
       "text": "string (normalized proposition)",
-      "topic": "string | null",
-      "stance_target": "string | null",
-      "polarity": "positive | negative | neutral | null",
-      "first_seen_date": "YYYY-MM-DD | null",
-      "supporting_source_ids": ["string"], 
-      "contradicting_source_ids": ["string"],
+      "stance_target": "string | None",
+      "polarity": "positive | negative | neutral | None",
+      "first_seen_date": "YYYY-MM-DD | None",
       "claim_ids": ["string"], 
-      "importance_score": 0.0,
       "confidence": "low | medium | high"
+      "tags": ["string"]
     }
   ],
   "claims": [
     {
-      "claim_id": "string (sha256_24)",
-      "canonical_id": "string (sha256_24) | null",
+      "claim_id": "claim_#",
+      "canonical_id": "canon_# | None",
       "text": "string (as stated; minimal cleanup)",
-      "speaker": "string | null",
-      "outlet": "string | null",
-      "published_date": "YYYY-MM-DD | null",
-      "surface_citation": "string | null",
-      "source_hints": ["string"], 
-      "matched_source_ids": ["string"],
+      "speaker": "string | None",
+      "outlet": "string | None",
+      "published_date": "YYYY-MM-DD | None", 
+      "matched_source_ids": ["source_#"],
       "judgment": "accurate | misleading | out_of_context | unsupported | unclear",
       "rationale": "string (≤ 3 sentences)",
       "confidence": "low | medium | high",
@@ -108,25 +103,13 @@ JSON Structure:
   ],
   "sources": [
     {
-      "source_id": "string (sha256_24)",
+      "source_id": "source_#",
       "source_type": "scientific_study | government_data | legislation_or_statute | bill | court_ruling | official_release_or_speech | secondary_report",
-      "title": "string | null",
-      "publisher_or_court": "string | null",
-      "authors_or_sponsors": ["string"],
-      "date_published": "YYYY-MM-DD | null",
-      "identifiers": {
-        "doi": "string | null",
-        "report_number": "string | null",
-        "statute_citation": "string | null",
-        "bill_number": "string | null",
-        "docket_or_case": "string | null"
-      },
-      "jurisdiction": "string | null",
-      "url": "string | null",
-      "archive_url": "string | null",
-      "access_date": "YYYY-MM-DD | null",
+      "title": "string | None",
+      "publisher_or_court": "string | None",
+      "url": "string | None",
       "match_status": "resolved | unresolved",
-      "notes": "string | null"
+      "search_query": ["string | None] (Put any keywords or phrases optimized for a search query)"
     }
   ]
 }

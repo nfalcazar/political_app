@@ -1,6 +1,17 @@
+from dotenv import load_dotenv
 import openai as ai
-from os import getenv
+import os
+from pathlib import Path
 from typing import List
+
+# Load environment variables from .env file relative to this file's location
+current_file = Path(__file__)
+env_file = current_file.parent.parent / ".env"
+load_dotenv(dotenv_path=env_file)
+
+# Get API keys from environment variables
+openai_key = os.getenv("OPENAI_KEY")
+deepseek_key = os.getenv("DEEP_KEY")
 
 #NOTE: GPT says to avoid global vars if both types of calls used in same file
 #TODO: Place AI keys into env
@@ -10,6 +21,7 @@ class OpenAiSync:
     def __init__(self, provider="deepseek"):
         self.provider = provider
         self.default_embed_model = "text-embedding-3-small"
+        self.default_emded_size = 1536
         try:
             self.client_setup(provider)
         except:
@@ -18,18 +30,19 @@ class OpenAiSync:
     
     def client_setup(self, provider):
         if provider == 'deepseek':
-            self.client = ai.OpenAI(api_key=getenv("DEEP_KEY"), base_url="https://api.deepseek.com")
+            self.client = ai.OpenAI(api_key=deepseek_key, base_url="https://api.deepseek.com")
             self.default_model = "deepseek-chat"
             self.models = [
                 "deepseek-chat",
                 "deepseek-reasoner"
             ]
         elif provider == "openai":
-            self.client = ai.OpenAI(api_key=getenv("OPENAI_KEY"))
-            self.default_model = "gpt-4o-mini"
+            self.client = ai.OpenAI(api_key=openai_key)
+            self.default_model = "gpt-5"
             self.models = [
             "o3-mini",
-            "gpt-4o-mini"
+            "gpt-4o-mini",
+            "gpt-5"
         ]
         else:
             raise ValueError("Unhandled provider passed in.")

@@ -1,8 +1,6 @@
 import feedparser
 import html
-import logging
 
-logger = logging.getLogger(__name__)
 
 class RssGrabber():
     rss_feeds = {
@@ -48,12 +46,9 @@ class RssGrabber():
     ############
     @classmethod
     def fox_parser(cls, url, out_queue = None):
-        logger.info(f"Grabbing feed - {url}")
         results = []
-
         feed = feedparser.parse(url)
         for entry in feed.entries:
-            logger.debug(f"Found - {entry.title}")
             article_text = entry.content[0]["value"]
             data_json = {}
             data_json["title"] = html.unescape(entry.title)
@@ -67,8 +62,3 @@ class RssGrabber():
                 results.append(data_json)
 
         return results
-
-
-
-
-
