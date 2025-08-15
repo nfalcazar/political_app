@@ -29,8 +29,12 @@ import time
 import pickle
 import json
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
 from text_processor import TextProcessor
 from routines.grab_rss_feeds import RssGrabber
+from routines.resolve_sources import resolve_unresolved_sources
 from database.init_db import DbInit
 from data_processor import DataProcessor
 
@@ -51,7 +55,8 @@ module_list = [
     "__main__",
     "text_processor",
     "text_extractor",
-    "data_processor"
+    "data_processor",
+    "routines.resolve_sources"
 ]
 for module in module_list:
     logging.getLogger(module).setLevel(logging.INFO)    
@@ -79,6 +84,20 @@ def main():
     )
     text_extract.start()
 
+    # Set up APScheduler for source resolution
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        func=resolve_unresolved_sources,
+        trigger=IntervalTrigger(minutes=30),
+        id='source_resolution_job',
+        name='Process unresolved sources',
+        replace_existing=True,
+        max_instances=1  # Prevent overlapping runs
+    )
+    
+    logger.info("Starting Source Resolution Scheduler")
+    scheduler.start()
+
     logger.info("Starting Fox Rss Retriever")
     res = RssGrabber.grab(out_queue=text_proc_in_queue)
 
@@ -88,6 +107,9 @@ def main():
     text_extract.join()
     data_proc_in_queue.put(None)
     data_processor.join()
+    
+    logger.info("Stopping Source Resolution Scheduler")
+    scheduler.shutdown()
 
     while not failed_links.empty():
         link = failed_links.get()

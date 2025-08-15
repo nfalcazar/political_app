@@ -88,6 +88,81 @@ class SqlStore:
         except Exception as e:
             raise Exception(f"Error querying data from {table_name} where {field_name} = {field_value}: {str(e)}")
 
+    def get_sources_by_metadata_field(self, field_path: str, field_value: str, limit: int = 50):
+        """
+        Get sources from the database by a specific metadata field value.
+        
+        Args:
+            field_path (str): JSON path to the metadata field (e.g., '$.match_status')
+            field_value (str): Value to search for in the metadata field
+            limit (int): Maximum number of records to return
+            
+        Returns:
+            list: List of dictionaries containing the matching source records
+        """
+        if not field_path or not field_value:
+            raise ValueError("Field path and field value cannot be empty")
+        
+        # Convert MySQL-style JSON path to PostgreSQL-style
+        # Remove the '$.' prefix and use PostgreSQL JSON operators
+        json_key = field_path.replace('$.', '')
+        
+        # Build the SELECT statement with PostgreSQL JSON extraction
+        select_query = f"""
+        SELECT * FROM sources 
+        WHERE metadata_ ->> :json_key = :field_value
+        LIMIT :limit
+        """
+        
+        try:
+            with self.engine.connect() as connection:
+                result = connection.execute(text(select_query), {
+                    "json_key": json_key,
+                    "field_value": field_value,
+                    "limit": limit
+                })
+                rows = result.fetchall()
+                
+                # Convert to list of dictionaries
+                if rows:
+                    columns = result.keys()
+                    return [dict(zip(columns, row)) for row in rows]
+                else:
+                    return []
+                    
+        except Exception as e:
+            raise Exception(f"Error querying sources by metadata field {field_path} = {field_value}: {str(e)}")
+
+    def get_source_by_url(self, url: str):
+        """
+        Get a source from the database by its URL.
+        
+        Args:
+            url (str): URL to search for
+            
+        Returns:
+            dict: Source dictionary if found, None otherwise
+        """
+        if not url:
+            raise ValueError("URL cannot be empty")
+        
+        # Build the SELECT statement
+        select_query = "SELECT * FROM sources WHERE link = :url LIMIT 1"
+        
+        try:
+            with self.engine.connect() as connection:
+                result = connection.execute(text(select_query), {"url": url})
+                row = result.fetchone()
+                
+                if row:
+                    columns = result.keys()
+                    return dict(zip(columns, row))
+                else:
+                    return None
+                    
+        except Exception as e:
+            raise Exception(f"Error querying source by URL {url}: {str(e)}")
+
     def delete_data(self, table_name, id):
         """
         Delete a record from a table using SQLAlchemy.
@@ -109,6 +184,40 @@ class SqlStore:
                 return result.rowcount
         except Exception as e:
             raise Exception(f"Error deleting data from {table_name} with id {id}: {str(e)}")
+
+    def update_data(self, table_name: str, id: str, data: dict) -> int:
+        """
+        Update a record in a table using SQLAlchemy.
+        
+        Args:
+            table_name (str): Name of the table to update data in
+            id (str): ID of the record to update
+            data (dict): Dictionary where keys are column names and values are data to update
+            
+        Returns:
+            Number of rows updated
+        """
+        if not id:
+            raise ValueError("ID cannot be empty")
+        
+        if not data:
+            raise ValueError("Data dictionary cannot be empty")
+        
+        # Build the UPDATE statement
+        set_clause = ', '.join([f"{key} = :{key}" for key in data.keys()])
+        update_query = f"UPDATE {table_name} SET {set_clause} WHERE id = :id"
+        
+        # Add the ID to the data dictionary
+        update_data = data.copy()
+        update_data['id'] = id
+        
+        try:
+            with self.engine.connect() as connection:
+                result = connection.execute(text(update_query), update_data)
+                connection.commit()
+                return result.rowcount
+        except Exception as e:
+            raise Exception(f"Error updating data in {table_name} with id {id}: {str(e)}")
 
     def create_edge(self, src_type: str, src_id: str, dest_type: str, dest_id: str, relationship_type: str, metadata: dict = None) -> str:
         """
