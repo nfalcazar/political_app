@@ -76,7 +76,7 @@ def test_specific_source(source_id: str):
         logger.info("Testing search functionality...")
         from routines.resolve_sources import perform_google_search
         
-        source_type = source.get('metadata_', {}).get('source_type', '') if isinstance(source.get('metadata_'), dict) else ''
+        source_type = source.get('metadata', {}).get('source_type', '') if isinstance(source.get('metadata'), dict) else ''
         search_metadata = perform_google_search(query_dict, source_type=source_type)
         
         logger.info(f"Search attempt: {search_metadata.get('search_attempt', 'unknown')}")

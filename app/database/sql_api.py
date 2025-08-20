@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from timescale_vector.client import uuid_from_time
 from typing import Optional, Union, List
+from util.ai_ext_calls import OpenAiSync
 
 # Load environment variables from .env file relative to this file's location
 current_file = Path(__file__)
@@ -113,7 +114,7 @@ class SqlStore:
         # Build the SELECT statement with PostgreSQL JSON extraction
         select_query = f"""
         SELECT * FROM sources 
-        WHERE metadata_ ->> :json_key = :field_value
+        WHERE metadata ->> :json_key = :field_value
         LIMIT :limit
         """
         
@@ -278,13 +279,14 @@ class SqlStore:
             logger.error(f"Error creating edge: {e}")
             return None
 
-    def create_claim(self, claim_data: dict, json_data: dict = None) -> str:
+    def create_claim(self, claim_data: dict, json_data: dict = None, ai_client: OpenAiSync = None) -> str:
         """
-        Create a claim in the database with deduplication logic.
+        Create a claim in the database with deduplication logic and embedding generation.
         
         Args:
             claim_data: Dictionary containing claim information
             json_data: Optional JSON data for metadata
+            ai_client: Optional AI client for generating embeddings
             
         Returns:
             The claim ID that was created (or existing claim ID if duplicate)
@@ -301,8 +303,8 @@ class SqlStore:
                 logger.warning(f"Skipping claim with no text: {claim_data}")
                 return None
             
-            # Check for existing claim with same text
-            existing_claim = self.get_data_by_field('claims', 'text', claim_text)
+            # Check for existing claim with same content
+            existing_claim = self.get_data_by_field('claims', 'contents', claim_text)
             if existing_claim:
                 # Use existing claim
                 existing_claim_id = existing_claim[0]['id']
@@ -312,14 +314,25 @@ class SqlStore:
             # Generate UUID for unique claim ID
             claim_id = str(uuid_from_time(datetime.now()))
             
+            # Generate embedding if AI client is provided
+            embedding = None
+            if ai_client:
+                try:
+                    embedding = ai_client.get_embedding(claim_text)
+                    logger.debug(f"Generated embedding for claim {claim_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to generate embedding for claim {claim_id}: {e}")
+                    # Continue without embedding
+            
             # Create claim data for SqlStore
             claim_insert_data = {
                 'id': claim_id,
-                'text': claim_text,
+                'contents': claim_text,
                 'speaker': clean_value(claim_data.get('speaker')),
                 'date': clean_value(claim_data.get('published_date')),
                 'verified': False,  # Always initialize to False
-                'metadata_': json.dumps({
+                'created_at': datetime.now(),  # Set at top level
+                'metadata': json.dumps({
                     'original_claim_id': clean_value(claim_data.get('claim_id')),
                     'canonical_id': clean_value(claim_data.get('canonical_id')),
                     'outlet': clean_value(claim_data.get('outlet')),
@@ -330,10 +343,13 @@ class SqlStore:
                     'tags': claim_data.get('tags') or [],
                     'source_file': clean_value(json_data.get('filename')) if json_data else 'unknown',
                     'source_title': clean_value(json_data.get('title')) if json_data else '',
-                    'source_link': clean_value(json_data.get('link')) if json_data else '',
-                    'created_at': datetime.now().isoformat()
+                    'source_link': clean_value(json_data.get('link')) if json_data else ''
                 })
             }
+            
+            # Add embedding if available
+            if embedding is not None:
+                claim_insert_data['embedding'] = embedding
             
             # Insert claim using SqlStore
             self.insert_data('claims', claim_insert_data)
@@ -411,7 +427,7 @@ class SqlStore:
                 'description': source_title,  # Already converted None to empty string
                 'link': source_url,  # Use the URL (real or synthetic)
                 'verified': False,  # Always initialize to False
-                'metadata_': json.dumps({
+                'metadata': json.dumps({
                     'original_source_id': clean_value(source_data.get('source_id')),
                     'source_type': clean_value(source_data.get('source_type')),
                     'publisher_or_court': publisher,  # Already cleaned
@@ -419,8 +435,7 @@ class SqlStore:
                     'search_query': search_queries,  # Already cleaned
                     'source_file': clean_value(json_data.get('filename')) if json_data else 'unknown',
                     'source_title': clean_value(json_data.get('title')) if json_data else '',
-                    'source_link': clean_value(json_data.get('link')) if json_data else '',
-                    'created_at': datetime.now().isoformat()
+                    'source_link': clean_value(json_data.get('link')) if json_data else ''
                 })
             }
             
@@ -598,7 +613,7 @@ class SqlStore:
                     return {
                         'direction': 'forward',
                         'relationship': edge_data['relationship_type'],
-                        'metadata': json.loads(edge_data['metadata_']) if edge_data['metadata_'] else {},
+                        'metadata': json.loads(edge_data['metadata']) if edge_data['metadata'] else {},
                         'edge_id': edge_data['id']
                     }
                 
@@ -623,7 +638,7 @@ class SqlStore:
                     return {
                         'direction': 'reverse',
                         'relationship': edge_data['relationship_type'],
-                        'metadata': json.loads(edge_data['metadata_']) if edge_data['metadata_'] else {},
+                        'metadata': json.loads(edge_data['metadata']) if edge_data['metadata'] else {},
                         'edge_id': edge_data['id']
                     }
                 

@@ -36,6 +36,7 @@ from routines.grab_rss_feeds import RssGrabber
 from routines.resolve_sources import resolve_unresolved_sources
 from database.init_db import DbInit
 from data_processor import DataProcessor
+from routines.claim_relationship_classifier import ClaimRelationshipClassifier
 
 #from text_extractor import TextExtractor
 
@@ -55,7 +56,8 @@ module_list = [
     "text_processor",
     "text_extractor",
     "data_processor",
-    "routines.resolve_sources"
+    "routines.resolve_sources",
+    "routines.claim_relationship_classifier"
 ]
 for module in module_list:
     logging.getLogger(module).setLevel(logging.INFO)    
@@ -98,7 +100,7 @@ def main():
     # scheduler.start()
 
     logger.info("Starting Rss Retriever")
-    res = RssGrabber.grab(out_queue=text_proc_in_queue)
+    RssGrabber.grab(out_queue=text_proc_in_queue)
 
     time.sleep(20)
     logger.info("Sending Shutdown sentinel - None")
@@ -112,6 +114,9 @@ def main():
 
     logger.info("Starting Source Resolution")
     resolve_unresolved_sources()
+
+    logger.info("Starting Claim Relationship Classifier")
+    ClaimRelationshipClassifier.classify_claim_relationships(table_type="both", force_reprocess=False)
 
     while not failed_links.empty():
         link = failed_links.get()

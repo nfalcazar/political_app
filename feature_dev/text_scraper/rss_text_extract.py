@@ -1,8 +1,8 @@
 import feedparser
 import pprint
 
-#url = "https://moxie.foxnews.com/google-publisher/politics.xml"
-url = "https://www.propublica.org/feeds/propublica/main"
+url = "https://moxie.foxnews.com/google-publisher/politics.xml"
+#url = "https://www.propublica.org/feeds/propublica/main"
 feed = feedparser.parse(url)
 # for entry in feed.entries:
 #     print(entry.title, entry.link)

@@ -1,6 +1,6 @@
 import feedparser
 import html
-
+import json
 
 class RssGrabber:
     rss_feeds = {
@@ -58,7 +58,12 @@ class RssGrabber:
         results = []
         feed = feedparser.parse(url)
         for entry in feed.entries:
-            article_text = entry.content[0]["value"]
+            #article_text = entry.content[0]["value"]
+            article_text = entry.get("content", [{}])[0].get("value", False)
+            if not article_text:
+                # TODO: Add links with missing texts to failed_links queue
+                continue
+            
             data_json = {}
             data_json["title"] = html.unescape(entry.title)
             data_json["link"] = entry.link
@@ -84,6 +89,7 @@ class RssGrabber:
             data_json["published"] = entry.published
             data_json["summary"] = None
             data_json["text"] = html.unescape(entry.summary)
+            #data_json["forced_rerun"] = True
             if out_queue:
                 out_queue.put(data_json)
             else:

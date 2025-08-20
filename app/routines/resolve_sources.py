@@ -121,7 +121,7 @@ def is_source_processed(source: Dict) -> bool:
     Returns:
         True if source has been processed, False otherwise
     """
-    metadata_raw = source.get('metadata_', '{}')
+    metadata_raw = source.get('metadata', '{}')
     if isinstance(metadata_raw, dict):
         metadata = metadata_raw
     else:
@@ -196,7 +196,7 @@ def _generate_search_query_internal(ai_client: OpenAiSync, claim: Dict, source: 
             sys_prompt = f.read()
         
         # Parse metadata from source
-        metadata_raw = source.get('metadata_', '{}')
+        metadata_raw = source.get('metadata', '{}')
         if isinstance(metadata_raw, dict):
             source_metadata = metadata_raw
         else:
@@ -249,7 +249,7 @@ def _generate_search_query_internal(ai_client: OpenAiSync, claim: Dict, source: 
     except Exception as e:
         logger.error(f"Error generating search query for source {source.get('id', 'unknown')}: {e}")
         # Fallback to basic query
-        metadata_raw = source.get('metadata_', '{}')
+        metadata_raw = source.get('metadata', '{}')
         if isinstance(metadata_raw, dict):
             source_metadata = metadata_raw
         else:
@@ -513,7 +513,7 @@ def process_source_batch(sources: List[Dict], sql_store: SqlStore, ai_client: Op
                     continue
                 
                 # Parse source metadata to get source type
-                metadata_raw = source.get('metadata_', '{}')
+                metadata_raw = source.get('metadata', '{}')
                 if isinstance(metadata_raw, dict):
                     source_metadata = metadata_raw
                 else:
@@ -655,7 +655,7 @@ def transfer_source_edges(sql_store: SqlStore, source_id: str, target_source_id:
                 edge_data = dict(zip(result.keys(), edge_row))
                 
                 # Create new edge pointing to target source
-                edge_metadata_raw = edge_data.get('metadata_', '{}')
+                edge_metadata_raw = edge_data.get('metadata', '{}')
                 if isinstance(edge_metadata_raw, dict):
                     edge_metadata = edge_metadata_raw
                 elif edge_metadata_raw:
@@ -703,7 +703,7 @@ def update_target_source_metadata(sql_store: SqlStore, target_source: Dict, merg
     """
     try:
         # Parse existing metadata
-        target_metadata_raw = target_source.get('metadata_', '{}')
+        target_metadata_raw = target_source.get('metadata', '{}')
         if isinstance(target_metadata_raw, dict):
             target_metadata = target_metadata_raw
         else:
@@ -712,7 +712,7 @@ def update_target_source_metadata(sql_store: SqlStore, target_source: Dict, merg
             except json.JSONDecodeError:
                 target_metadata = {}
         
-        merged_metadata_raw = merged_source.get('metadata_', '{}')
+        merged_metadata_raw = merged_source.get('metadata', '{}')
         if isinstance(merged_metadata_raw, dict):
             merged_metadata = merged_metadata_raw
         else:
@@ -750,7 +750,7 @@ def update_target_source_metadata(sql_store: SqlStore, target_source: Dict, merg
         
         # Update the target source
         sql_store.update_data('sources', target_source['id'], {
-            'metadata_': json.dumps(target_metadata)
+            'metadata': json.dumps(target_metadata)
         })
         
         logger.debug(f"Updated metadata for target source {target_source['id']}")
@@ -830,7 +830,7 @@ def update_source_directly(sql_store: SqlStore, source: Dict, search_metadata: D
         creation_date = extract_creation_date(best_result)
         
         # Parse existing metadata
-        metadata_raw = source.get('metadata_', '{}')
+        metadata_raw = source.get('metadata', '{}')
         if isinstance(metadata_raw, dict):
             metadata = metadata_raw
         else:
@@ -862,7 +862,7 @@ def update_source_directly(sql_store: SqlStore, source: Dict, search_metadata: D
         # Update the source in database
         update_result = sql_store.update_data('sources', source['id'], {
             'link': best_result['link'],  # Update the main link field
-            'metadata_': json.dumps(metadata)
+            'metadata': json.dumps(metadata)
         })
         
         logger.info(f"Successfully resolved source {source['id']} to: {best_result['link']} "

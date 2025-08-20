@@ -217,10 +217,10 @@ class DataProcessor(mp.Process):
         
         for canon_claim in json_data['canonical_claims']:
             try:
-                # Extract content (text field)
-                content = canon_claim.get('text', '')
+                # Extract content (contents field)
+                content = canon_claim.get('contents', canon_claim.get('text', ''))
                 if not content:
-                    logger.warning(f"Skipping canonical claim with no text: {canon_claim}")
+                    logger.warning(f"Skipping canonical claim with no content: {canon_claim}")
                     continue
                 
                 # Generate embedding
@@ -269,7 +269,7 @@ class DataProcessor(mp.Process):
                 # Create metadata with all other fields
                 metadata = {}
                 for key, value in canon_claim.items():
-                    if key != 'text':  # Exclude the text field as it goes to content
+                    if key not in ['text', 'contents']:  # Exclude the content fields as they go to contents
                         metadata[key] = value
                 
                 # Add source file information to metadata
@@ -282,7 +282,7 @@ class DataProcessor(mp.Process):
                 # Prepare record for vector store
                 record = {
                     'id': canon_id,
-                    'metadata_': metadata,
+                    'metadata': metadata,
                     'contents': content,
                     'embedding': embedding
                 }
@@ -337,8 +337,8 @@ class DataProcessor(mp.Process):
         
         for claim in json_data['claims']:
             try:
-                # Use the new create_claim method from sql_store
-                claim_id = self.sql_store.create_claim(claim, json_data)
+                # Use the new create_claim method from sql_store with AI client for embeddings
+                claim_id = self.sql_store.create_claim(claim, json_data, self.ai_client)
                 
                 if claim_id:
                     # Store mapping for edge creation

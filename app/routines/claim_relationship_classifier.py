@@ -35,7 +35,7 @@ class ClaimRelationshipClassifier:
     
     # Class-level configuration
     SIMILARITY_THRESHOLD = 0.75
-    MAX_SIMILAR_CLAIMS = 10
+    MAX_SIMILAR_CLAIMS = 20
     BATCH_SIZE = 5
     LLM_PROVIDER = "openai"
     LOG_PROGRESS_INTERVAL = 25
