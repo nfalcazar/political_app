@@ -9,6 +9,9 @@ Usage:
     
     # Call directly
     resolve_unresolved_sources()
+
+Note: Looks like only get 100 results per day from Google Custom Search API.
+    - Consider paid API tests ($5 per 1000 results)
 """
 
 import json

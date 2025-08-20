@@ -7,13 +7,12 @@ directories.
 
 '''
 TODO: Focus on claims to sources for MVP
-    - Make new module to find links for unresolved sources
-        * Google Cust search should be cheap enough to scan all unresolved sources
-        * Can make util to return top x% of sources based on connections for human verification
     - Add more RSS feeds (NYT, WSJ, CNN, etc...)
+        * Doesn't seem many RSS feeds provide articles, will run into paywalled articles
     - Extract facts from primary, reliable sources
     - Compare similar facts (supports, counters, etc...)
     - Decide: Link facts to canon claims or rely on graph traversal
+    - Some logic to do initial searchs of my beliefs
 
 TODO: Start including cost estimates for each step/module
 '''
@@ -85,18 +84,18 @@ def main():
     text_extract.start()
 
     # Set up APScheduler for source resolution
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        func=resolve_unresolved_sources,
-        trigger=IntervalTrigger(minutes=30),
-        id='source_resolution_job',
-        name='Process unresolved sources',
-        replace_existing=True,
-        max_instances=1  # Prevent overlapping runs
-    )
+    # scheduler = BackgroundScheduler()
+    # scheduler.add_job(
+    #     func=resolve_unresolved_sources,
+    #     trigger=IntervalTrigger(minutes=30),
+    #     id='source_resolution_job',
+    #     name='Process unresolved sources',
+    #     replace_existing=True,
+    #     max_instances=1  # Prevent overlapping runs
+    # )
     
-    logger.info("Starting Source Resolution Scheduler")
-    scheduler.start()
+    # logger.info("Starting Source Resolution Scheduler")
+    # scheduler.start()
 
     logger.info("Starting Fox Rss Retriever")
     res = RssGrabber.grab(out_queue=text_proc_in_queue)
@@ -108,8 +107,11 @@ def main():
     data_proc_in_queue.put(None)
     data_processor.join()
     
-    logger.info("Stopping Source Resolution Scheduler")
-    scheduler.shutdown()
+    # logger.info("Stopping Source Resolution Scheduler")
+    # scheduler.shutdown()
+
+    logger.info("Starting Source Resolution")
+    resolve_unresolved_sources()
 
     while not failed_links.empty():
         link = failed_links.get()
