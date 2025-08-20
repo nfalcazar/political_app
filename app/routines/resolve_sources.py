@@ -318,7 +318,7 @@ def perform_google_search(query: Dict, google_api_key: str = None, google_engine
         url = "https://www.googleapis.com/customsearch/v1"
         
         # First attempt: with original query (may include site:domain)
-        logger.info("Attempting search with original query")
+        logger.debug("Attempting search with original query")
         
         # Start with base parameters
         params = {
@@ -337,14 +337,14 @@ def perform_google_search(query: Dict, google_api_key: str = None, google_engine
         items = results.get("items", [])
         total_results = results.get("searchInformation", {}).get("totalResults", "0")
         
-        logger.info(f"First attempt results: {len(items)} items, {total_results} total")
+        logger.debug(f"First attempt results: {len(items)} items, {total_results} total")
         
         # If we got results, return them
         if items and int(total_results) > 0:
             return _process_search_results(results, query, "original_query")
         
         # Second attempt: remove site restriction and add more:source_type
-        logger.info("No results with original query, trying broader search with source type hint")
+        logger.debug("No results with original query, trying broader search with source type hint")
         
         # Start with base parameters
         params = {
@@ -366,7 +366,7 @@ def perform_google_search(query: Dict, google_api_key: str = None, google_engine
         # Add source type hint
         if source_type:
             broader_q = f"{broader_q} more:{source_type}"
-            logger.info(f"Removed site restriction and added source type hint: more:{source_type}")
+            logger.debug(f"Removed site restriction and added source type hint: more:{source_type}")
         
         broader_query['q'] = broader_q
         
@@ -380,7 +380,7 @@ def perform_google_search(query: Dict, google_api_key: str = None, google_engine
         items = results.get("items", [])
         total_results = results.get("searchInformation", {}).get("totalResults", "0")
         
-        logger.info(f"Second attempt results: {len(items)} items, {total_results} total")
+        logger.debug(f"Second attempt results: {len(items)} items, {total_results} total")
         
         return _process_search_results(results, broader_query, "broader_search")
         
@@ -456,7 +456,7 @@ def process_source_batch(sources: List[Dict], sql_store: SqlStore, ai_client: Op
     source_claim_pairs = []
     for source in sources:
         if is_source_processed(source):
-            logger.info(f"Skipping already processed source: {source['id']}")
+            logger.debug(f"Skipping already processed source: {source['id']}")
             skipped_count += 1
         else:
             claim = get_claim_for_source(sql_store, source['id'])
@@ -488,7 +488,7 @@ def process_source_batch(sources: List[Dict], sql_store: SqlStore, ai_client: Op
                 result = future.result()
                 if isinstance(result, dict) and 'source_id' in result:
                     completed_queries[result['source_id']] = result
-                    logger.info(f"Generated query for source: {result['source_id']}")
+                    logger.debug(f"Generated query for source: {result['source_id']}")
                 else:
                     logger.warning(f"Unexpected result format for source {source_id}: {type(result)}")
             except Exception as e:
@@ -562,7 +562,7 @@ def update_source_with_resolution(sql_store: SqlStore, source: Dict, search_meta
         
         if existing_source and existing_source['id'] != source['id']:
             # Another source already exists with this URL - merge them
-            logger.info(f"Found existing source {existing_source['id']} with same URL {resolved_url}")
+            logger.debug(f"Found existing source {existing_source['id']} with same URL {resolved_url}")
             merge_sources(sql_store, source, existing_source, search_metadata, query_dict)
         else:
             # No existing source with this URL - update normally
@@ -606,7 +606,7 @@ def merge_sources(sql_store: SqlStore, source_to_merge: Dict, target_source: Dic
         query_dict: Query dictionary used for logging purposes
     """
     try:
-        logger.info(f"Merging source {source_to_merge['id']} into existing source {target_source['id']}")
+        logger.debug(f"Merging source {source_to_merge['id']} into existing source {target_source['id']}")
         
         # Transfer all edges from source_to_merge to target_source
         transferred_edges = transfer_source_edges(sql_store, source_to_merge['id'], target_source['id'])
@@ -617,7 +617,7 @@ def merge_sources(sql_store: SqlStore, source_to_merge: Dict, target_source: Dic
         # Delete the merged source
         delete_merged_source(sql_store, source_to_merge['id'])
         
-        logger.info(f"Successfully merged source {source_to_merge['id']} into {target_source['id']} "
+        logger.debug(f"Successfully merged source {source_to_merge['id']} into {target_source['id']} "
                    f"(transferred {transferred_edges} edges)")
         
     except Exception as e:
@@ -753,7 +753,7 @@ def update_target_source_metadata(sql_store: SqlStore, target_source: Dict, merg
             'metadata_': json.dumps(target_metadata)
         })
         
-        logger.info(f"Updated metadata for target source {target_source['id']}")
+        logger.debug(f"Updated metadata for target source {target_source['id']}")
         
     except Exception as e:
         logger.error(f"Error updating target source metadata: {e}")
@@ -770,7 +770,7 @@ def delete_merged_source(sql_store: SqlStore, source_id: str):
     try:
         # Delete the source
         deleted_count = sql_store.delete_data('sources', source_id)
-        logger.info(f"Deleted merged source {source_id} ({deleted_count} rows affected)")
+        logger.debug(f"Deleted merged source {source_id} ({deleted_count} rows affected)")
         
     except Exception as e:
         logger.error(f"Error deleting merged source {source_id}: {e}")

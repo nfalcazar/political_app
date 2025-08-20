@@ -97,7 +97,7 @@ def main():
     # logger.info("Starting Source Resolution Scheduler")
     # scheduler.start()
 
-    logger.info("Starting Fox Rss Retriever")
+    logger.info("Starting Rss Retriever")
     res = RssGrabber.grab(out_queue=text_proc_in_queue)
 
     time.sleep(20)

@@ -33,3 +33,5 @@ Misc:
     * Will explore later, don't need for pulling text from RSS feed, but do need this when I reprocess links or want to grab from another source
 
     * When running fox rss test (~20 articles), arun_many still seems ridiculously slow.
+
+    * Rss feeds for center for american progress not useful, need webscaper
