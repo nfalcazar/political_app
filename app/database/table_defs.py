@@ -1,6 +1,8 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import DateTime
+from datetime import datetime
 
 class Base(DeclarativeBase):
     pass
@@ -32,14 +34,8 @@ class ClaimsTable(Base):
     date: Mapped[str]
     verified: Mapped[bool]
     metadata_: Mapped[dict] = mapped_column(JSON)
-
-
-class FactsTable(Base):
-    __tablename__ = "facts"
-    id: Mapped[str] = mapped_column(primary_key=True)
-    content: Mapped[str]
     embedding: Mapped[list[float]] = mapped_column(Vector(1536))
-    metadata_: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 # keys_sources = []
