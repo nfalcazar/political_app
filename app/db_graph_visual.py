@@ -41,7 +41,7 @@ def create_graph_visualizer(
         dest_type, 
         dest_id, 
         relationship_type,
-        metadata_
+        metadata
     FROM edges
     """
     
@@ -74,12 +74,12 @@ def create_graph_visualizer(
     claims_ids = [node_id for node_id, node_type in all_nodes if node_type == 'claim']
     if claims_ids:
         claims_query = f"""
-        SELECT id, text FROM claims 
+        SELECT id, contents FROM claims 
         WHERE id IN ({','.join([f"'{id}'" for id in claims_ids])})
         """
         claims_df = pd.read_sql(claims_query, engine)
         for _, row in claims_df.iterrows():
-            node_contents[row['id']] = row['text']
+            node_contents[row['id']] = row['contents']
     
     # Fetch canonical_claims content
     canonical_claims_ids = [node_id for node_id, node_type in all_nodes if node_type == 'canonical_claim']

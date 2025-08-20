@@ -17,7 +17,7 @@ load_dotenv(dotenv_path="../.env")
 class DbInit:
     def __init__(self):
         self.canon_claim_store = VectorStore(table_name="canon_claims")
-        #self.claim_store = VectorStore(table_name="claims")
+        self.claim_store = VectorStore(table_name="claims")
         self.sql_store = SqlStore()
         self.db_engine = create_engine(getenv("SQL_URL"))
         self.create_tables()
@@ -28,7 +28,6 @@ class DbInit:
 
     def create_tables(self):
         self.canon_claim_store.create_tables()
-        #self.claim_store.create_tables()
         Base.metadata.create_all(self.db_engine)
 
     def upgrade_claims_table_with_vectors(self):
@@ -283,18 +282,3 @@ if __name__ == '__main__':
     # Step 1: Initialize database
     print("Step 1: Initializing database...")
     db = DbInit()
-    
-    # Step 2: Generate embeddings for existing claims
-    print("\nStep 2: Generating embeddings for existing claims...")
-    try:
-        db.generate_embeddings_for_existing_claims()
-        print("Embedding generation completed successfully!")
-    except Exception as e:
-        print(f"Error generating embeddings: {e}")
-        raise
-
-    #db.clean_tables()
-
-    # input("Remove all tables? (y/n)")
-    # if input() == "y":
-    #     db.clean_tables()

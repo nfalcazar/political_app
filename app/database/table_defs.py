@@ -20,8 +20,8 @@ class CanonClaimTable(Base):
     '''
     __tablename__ = "canon_claims"
     id: Mapped[str] = mapped_column(primary_key=True)
-    metadata_: Mapped[dict] = mapped_column(JSON)
-    content: Mapped[str]
+    metadata_: Mapped[dict] = mapped_column(JSON, name="metadata")
+    contents: Mapped[str]
     embedding: Mapped[list[float]] = mapped_column(Vector(1536))
 
 
@@ -29,11 +29,12 @@ class CanonClaimTable(Base):
 class ClaimsTable(Base):
     __tablename__ = "claims"
     id: Mapped[str] = mapped_column(primary_key=True)
-    text: Mapped[str]
+    #text: Mapped[str] = mapped_column(name="contents")
+    contents: Mapped[str]
     speaker: Mapped[str]
     date: Mapped[str]
     verified: Mapped[bool]
-    metadata_: Mapped[dict] = mapped_column(JSON)
+    metadata_: Mapped[dict] = mapped_column(JSON, name="metadata")
     embedding: Mapped[list[float]] = mapped_column(Vector(1536))
     created_at: Mapped[datetime] = mapped_column(DateTime)
 
@@ -45,7 +46,7 @@ class SourcesTable(Base):
     description: Mapped[str]
     link: Mapped[str]
     verified: Mapped[bool]
-    metadata_: Mapped[dict] = mapped_column(JSON)
+    metadata_: Mapped[dict] = mapped_column(JSON, name="metadata")
 
 
 #keys_edges = ["src_type", "src_id", "dest_type", "dest_id", "metadata"]
@@ -57,4 +58,4 @@ class EdgeTable(Base):
     dest_type: Mapped[str]
     dest_id: Mapped[str]
     relationship_type: Mapped[str]
-    metadata_: Mapped[dict] = mapped_column(JSON)
+    metadata_: Mapped[dict] = mapped_column(JSON, name="metadata")

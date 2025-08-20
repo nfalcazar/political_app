@@ -8,6 +8,7 @@ import json
 import logging
 from datetime import datetime
 from timescale_vector.client import uuid_from_time
+from typing import Optional, Union, List
 
 # Load environment variables from .env file relative to this file's location
 current_file = Path(__file__)
@@ -75,7 +76,9 @@ class SqlStore:
         
         try:
             with self.engine.connect() as connection:
-                result = connection.execute(text(select_query), {"field_value": field_value})
+                # Convert field_value to string to handle UUID and other types
+                field_value_str = str(field_value) if field_value is not None else None
+                result = connection.execute(text(select_query), {"field_value": field_value_str})
                 rows = result.fetchall()
                 
                 # Convert to list of dictionaries
@@ -262,7 +265,7 @@ class SqlStore:
                 'dest_type': dest_type,
                 'dest_id': dest_id,
                 'relationship_type': relationship_type,
-                'metadata_': json.dumps(edge_metadata) # Convert dictionary to JSON string
+                'metadata': json.dumps(edge_metadata) # Convert dictionary to JSON string
             }
             
             # Insert edge using SqlStore
@@ -429,4 +432,203 @@ class SqlStore:
             
         except Exception as e:
             logger.error(f"Error creating source: {e}")
+            return None
+    
+    def check_claim_relationship(self, claim_id: str, claim_type: str, relationship_type: str = None, 
+                                other_claim_id: str = None) -> Union[bool, List[str], Optional[dict]]:
+        """
+        Consolidated function to check claim relationships.
+        
+        Args:
+            claim_id: ID of the claim to check
+            claim_type: Type of the claim (e.g., 'claim', 'canonical_claim')
+            relationship_type: Optional specific relationship type to check for
+            other_claim_id: Optional ID of another claim to check relationship with
+            
+        Returns:
+            - If relationship_type and other_claim_id provided: bool (relationship exists)
+            - If only other_claim_id provided: List[str] (existing relationship types)
+            - If only relationship_type provided: bool (any relationship of that type exists)
+            - If no optional params: List[str] (all relationship types for this claim)
+        """
+        try:
+            with self.engine.connect() as connection:
+                if relationship_type and other_claim_id:
+                    # Check for specific relationship type between two claims
+                    query = """
+                    SELECT COUNT(*) FROM edges 
+                    WHERE (
+                        (src_type = :claim_type AND src_id = :claim_id AND dest_type = :claim_type AND dest_id = :other_claim_id) OR
+                        (src_type = :claim_type AND src_id = :other_claim_id AND dest_type = :claim_type AND dest_id = :claim_id)
+                    )
+                    AND relationship_type = :relationship_type
+                    """
+                    result = connection.execute(text(query), {
+                        'claim_type': claim_type,
+                        'claim_id': str(claim_id),
+                        'other_claim_id': str(other_claim_id),
+                        'relationship_type': relationship_type
+                    })
+                    count = result.fetchone()[0]
+                    return count > 0
+                
+                elif other_claim_id:
+                    # Get all relationship types between two claims
+                    query = """
+                    SELECT relationship_type FROM edges 
+                    WHERE (
+                        (src_type = :claim_type AND src_id = :claim_id AND dest_type = :claim_type AND dest_id = :other_claim_id) OR
+                        (src_type = :claim_type AND src_id = :other_claim_id AND dest_type = :claim_type AND dest_id = :claim_id)
+                    )
+                    AND relationship_type IN ('supports', 'opposes', 'neutral')
+                    """
+                    result = connection.execute(text(query), {
+                        'claim_type': claim_type,
+                        'claim_id': str(claim_id),
+                        'other_claim_id': str(other_claim_id)
+                    })
+                    return [row[0] for row in result.fetchall()]
+                
+                elif relationship_type:
+                    # Check if claim has any relationship of specific type
+                    query = """
+                    SELECT COUNT(*) FROM edges 
+                    WHERE src_type = :claim_type AND src_id = :claim_id 
+                    AND relationship_type = :relationship_type
+                    """
+                    result = connection.execute(text(query), {
+                        'claim_type': claim_type,
+                        'claim_id': str(claim_id),
+                        'relationship_type': relationship_type
+                    })
+                    count = result.fetchone()[0]
+                    return count > 0
+                
+                else:
+                    # Get all relationship types for this claim
+                    query = """
+                    SELECT relationship_type FROM edges 
+                    WHERE src_type = :claim_type AND src_id = :claim_id 
+                    AND relationship_type IN ('supports', 'opposes', 'neutral')
+                    """
+                    result = connection.execute(text(query), {
+                        'claim_type': claim_type,
+                        'claim_id': str(claim_id)
+                    })
+                    return [row[0] for row in result.fetchall()]
+                
+        except Exception as e:
+            logger.error(f"Error checking claim relationship: {e}")
+            if relationship_type and other_claim_id:
+                return False
+            elif other_claim_id:
+                return []
+            elif relationship_type:
+                return False
+            else:
+                return []
+
+    def relationship_exists_bidirectional(self, entity_a_id: str, entity_b_id: str, entity_type: str) -> bool:
+        """
+        Check if any relationship edge exists between two entities in either direction.
+        Specifically looks for 'supports', 'opposes', or 'uncertain' relationships.
+        
+        Args:
+            entity_a_id: ID of the first entity
+            entity_b_id: ID of the second entity
+            entity_type: Type of both entities (e.g., 'claim', 'canonical_claim')
+            
+        Returns:
+            True if any relationship exists between the entities, False otherwise
+        """
+        try:
+            with self.engine.connect() as connection:
+                query = """
+                SELECT COUNT(*) FROM edges 
+                WHERE (
+                    (src_type = :entity_type AND src_id = :entity_a_id AND dest_type = :entity_type AND dest_id = :entity_b_id) OR
+                    (src_type = :entity_type AND src_id = :entity_b_id AND dest_type = :entity_type AND dest_id = :entity_a_id)
+                )
+                AND relationship_type IN ('supports', 'opposes', 'neutral')
+                """
+                result = connection.execute(text(query), {
+                    'entity_type': entity_type,
+                    'entity_a_id': str(entity_a_id),  # Convert UUID to string
+                    'entity_b_id': str(entity_b_id)   # Convert UUID to string
+                })
+                count = result.fetchone()[0]
+                return count > 0
+                
+        except Exception as e:
+            logger.error(f"Error checking bidirectional relationship: {e}")
+            return False
+    
+    def get_relationship_between_entities(self, entity_a_id: str, entity_b_id: str, entity_type: str) -> Optional[dict]:
+        """
+        Get the relationship between two entities if it exists.
+        
+        Args:
+            entity_a_id: ID of the first entity
+            entity_b_id: ID of the second entity
+            entity_type: Type of both entities
+            
+        Returns:
+            Dictionary with relationship details or None if no relationship exists
+        """
+        try:
+            with self.engine.connect() as connection:
+                # Check A -> B direction
+                query_ab = """
+                SELECT * FROM edges 
+                WHERE src_type = :entity_type AND src_id = :entity_a_id 
+                AND dest_type = :entity_type AND dest_id = :entity_b_id
+                AND relationship_type IN ('supports', 'opposes', 'neutral')
+                LIMIT 1
+                """
+                result_ab = connection.execute(text(query_ab), {
+                    'entity_type': entity_type,
+                    'entity_a_id': str(entity_a_id),  # Convert UUID to string
+                    'entity_b_id': str(entity_b_id)   # Convert UUID to string
+                })
+                edge_ab = result_ab.fetchone()
+                
+                if edge_ab:
+                    columns = result_ab.keys()
+                    edge_data = dict(zip(columns, edge_ab))
+                    return {
+                        'direction': 'forward',
+                        'relationship': edge_data['relationship_type'],
+                        'metadata': json.loads(edge_data['metadata_']) if edge_data['metadata_'] else {},
+                        'edge_id': edge_data['id']
+                    }
+                
+                # Check B -> A direction
+                query_ba = """
+                SELECT * FROM edges 
+                WHERE src_type = :entity_type AND src_id = :entity_b_id 
+                AND dest_type = :entity_type AND dest_id = :entity_a_id
+                AND relationship_type IN ('supports', 'opposes', 'neutral')
+                LIMIT 1
+                """
+                result_ba = connection.execute(text(query_ba), {
+                    'entity_type': entity_type,
+                    'entity_b_id': str(entity_b_id),  # Convert UUID to string
+                    'entity_a_id': str(entity_a_id)   # Convert UUID to string
+                })
+                edge_ba = result_ba.fetchone()
+                
+                if edge_ba:
+                    columns = result_ba.keys()
+                    edge_data = dict(zip(columns, edge_ba))
+                    return {
+                        'direction': 'reverse',
+                        'relationship': edge_data['relationship_type'],
+                        'metadata': json.loads(edge_data['metadata_']) if edge_data['metadata_'] else {},
+                        'edge_id': edge_data['id']
+                    }
+                
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error getting relationship between entities: {e}")
             return None

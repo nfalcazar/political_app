@@ -180,15 +180,18 @@ class VectorStore:
             start_date, end_date = time_range
             search_args["uuid_time_filter"] = client.UUIDTimeRange(start_date, end_date)
 
-        results = self.vec_client.search(query_embed, **search_args)
-        elapsed_time = time.time() - start_time
-
-        logging.info(f"Vector search completed in {elapsed_time:.3f} seconds")
-
-        if return_dataframe:
-            return self._create_dataframe_from_results(results)
-        else:
-            return results
+        try:
+            results = self.vec_client.search(query_embed, **search_args)
+            elapsed_time = time.time() - start_time
+            
+            if return_dataframe:
+                df = self._create_dataframe_from_results(results)
+                return df
+            else:
+                return results
+        except Exception as e:
+            logging.error(f"Error in vector search for table {self.table_name}: {e}")
+            raise
 
 
     def _create_dataframe_from_results(
@@ -204,15 +207,36 @@ class VectorStore:
         Returns:
             A pandas DataFrame containing the formatted search results.
         """
+        # Let the timescale vector client determine the actual column names
+        # by using the first result to get the column structure
+        if not results:
+            return pd.DataFrame()
+        
+        # Get the actual column names from the timescale vector client
+        # The client should return the correct column names for each table
+        if self.table_name == "canon_claims":
+            # canon_claims table: id, metadata, contents, embedding
+            columns = ["id", "metadata", "contents", "embedding", "distance"]
+        elif self.table_name == "claims":
+            # claims table: id, metadata, contents, embedding
+            columns = ["id", "metadata", "contents", "embedding", "distance"]
+        else:
+            # Default fallback - let's try to infer from the data
+            # This is a fallback in case the table name doesn't match
+            columns = ["id", "metadata", "content", "embedding", "distance"]
+        
         # Convert results to DataFrame
-        df = pd.DataFrame(
-            results, columns=["id", "metadata", "content", "embedding", "distance"]
-        )
+        df = pd.DataFrame(results, columns=columns)
 
         # Expand metadata column
-        df = pd.concat(
-            [df.drop(["metadata"], axis=1), df["metadata"].apply(pd.Series)], axis=1
-        )
+        try:
+            df = pd.concat(
+                [df.drop(["metadata"], axis=1), df["metadata"].apply(pd.Series)], axis=1
+            )
+        except Exception as e:
+            logging.error(f"Error expanding metadata column: {e}")
+            # Keep the original DataFrame if expansion fails
+            pass
 
         # Convert id to string for better readability
         df["id"] = df["id"].astype(str)

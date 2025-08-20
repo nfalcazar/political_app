@@ -2,7 +2,7 @@ import feedparser
 import html
 
 
-class RssGrabber():
+class RssGrabber:
     rss_feeds = {
         "Fox": {
             "fox_politics" : "https://moxie.foxnews.com/google-publisher/politics.xml"
