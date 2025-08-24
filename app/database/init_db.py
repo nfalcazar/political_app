@@ -10,16 +10,20 @@ from .table_defs import Base
 from .vector_api import VectorStore
 from .sql_api import SqlStore
 from util.ai_ext_calls import OpenAiSync
+from config.env_manager import EnvironmentManager
 
 load_dotenv(dotenv_path="../.env")
 
 
 class DbInit:
-    def __init__(self):
-        self.canon_claim_store = VectorStore(table_name="canon_claims")
-        self.claim_store = VectorStore(table_name="claims")
-        self.sql_store = SqlStore()
-        self.db_engine = create_engine(getenv("SQL_URL"))
+    def __init__(self, env=None):
+        # Initialize environment manager
+        self.env_manager = EnvironmentManager(env)
+        
+        self.canon_claim_store = VectorStore(table_name="canon_claims", env=env)
+        self.claim_store = VectorStore(table_name="claims", env=env)
+        self.sql_store = SqlStore(env=env)
+        self.db_engine = create_engine(self.env_manager.get_db_url())
         self.create_tables()
 
     # TODO: Doesn't seem to work, look into it

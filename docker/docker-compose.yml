@@ -1,15 +1,38 @@
 services:
-  timescaledb:
+  # Production Database
+  timescaledb-prod:
     image: timescale/timescaledb-ha:pg16
-    container_name: timescaledb
+    container_name: timescaledb-prod
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_PASSWORD=password
     ports:
-      - "5432:5432"
+      - "5432:5432"  # Production port
     volumes:
-      - timescaledb_data:/var/lib/postgresql/data
+      - timescaledb_prod_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - political_app_network
+
+  # Development Database
+  timescaledb-dev:
+    image: timescale/timescaledb-ha:pg16
+    container_name: timescaledb-dev
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"  # Development port
+    volumes:
+      - timescaledb_dev_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - political_app_network
 
 volumes:
-  timescaledb_data:
+  timescaledb_prod_data:
+  timescaledb_dev_data:
+
+networks:
+  political_app_network:
+    driver: bridge

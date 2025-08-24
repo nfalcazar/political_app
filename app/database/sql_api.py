@@ -10,6 +10,7 @@ from datetime import datetime
 from timescale_vector.client import uuid_from_time
 from typing import Optional, Union, List
 from util.ai_ext_calls import OpenAiSync
+from config.env_manager import EnvironmentManager
 
 # Load environment variables from .env file relative to this file's location
 current_file = Path(__file__)
@@ -19,8 +20,11 @@ load_dotenv(dotenv_path=env_file)
 logger = logging.getLogger(__name__)
 
 class SqlStore:
-    def __init__(self):
-        self.db_url = getenv("SQL_URL")
+    def __init__(self, env=None):
+        # Initialize environment manager
+        self.env_manager = EnvironmentManager(env)
+        self.db_url = self.env_manager.get_db_url()
+        
         # Create SQLAlchemy engine
         self.engine = create_engine(self.db_url)
         self.Session = sessionmaker(bind=self.engine)

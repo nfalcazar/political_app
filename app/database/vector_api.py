@@ -9,6 +9,7 @@ from pathlib import Path
 import pandas as pd
 from util.ai_ext_calls import OpenAiSync
 from timescale_vector import client
+from config.env_manager import EnvironmentManager
 
 # Load environment variables from .env file relative to this file's location
 current_file = Path(__file__)
@@ -21,14 +22,17 @@ load_dotenv(dotenv_path=env_file)
 class VectorStore:
     """A class for managing vector operations and database interactions."""
 
-    def __init__(self, table_name : str):
+    def __init__(self, table_name: str, env=None):
         """Initialize the VectorStore with settings, OpenAI client, and Timescale Vector client."""
+        # Initialize environment manager
+        self.env_manager = EnvironmentManager(env)
+        
         self.ai_client = OpenAiSync(provider="openai")
         self.emded_size = self.ai_client.default_emded_size
         self.time_partition_interval = timedelta(days=7)
         self.table_name = table_name
         self.vec_client = client.Sync(
-            getenv("TIMESCALE_SERVICE_URL"),
+            self.env_manager.get_timescale_url(),
             self.table_name,
             self.emded_size,
             time_partition_interval=self.time_partition_interval,
