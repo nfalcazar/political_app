@@ -275,6 +275,66 @@ class SqlStore:
             logger.error(f"Error creating edge: {e}")
             return None
 
+    def get_edges_by_node(self, node_type: str, node_id: str) -> list:
+        """
+        Get all edges that have the specified node as either source or destination.
+        This function checks both directions to find all connections for a given node.
+        
+        Args:
+            node_type: The type of the node (e.g., 'canonical_claim', 'claim', 'source')
+            node_id: The ID of the node
+            
+        Returns:
+            List of dictionaries containing edge information
+        """
+        try:
+            # Query for edges where the node is the source
+            source_query = """
+                SELECT * FROM edges 
+                WHERE src_type = :node_type AND src_id = :node_id
+            """
+            
+            # Query for edges where the node is the destination
+            dest_query = """
+                SELECT * FROM edges 
+                WHERE dest_type = :node_type AND dest_id = :node_id
+            """
+            
+            all_edges = []
+            
+            with self.engine.connect() as connection:
+                # Get edges where node is source
+                source_result = connection.execute(
+                    text(source_query), 
+                    {"node_type": node_type, "node_id": node_id}
+                )
+                source_edges = source_result.fetchall()
+                
+                # Get edges where node is destination
+                dest_result = connection.execute(
+                    text(dest_query), 
+                    {"node_type": node_type, "node_id": node_id}
+                )
+                dest_edges = dest_result.fetchall()
+                
+                # Convert results to dictionaries
+                for edge in source_edges:
+                    edge_dict = dict(zip(source_result.keys(), edge))
+                    edge_dict['direction'] = 'outgoing'  # Node is source
+                    all_edges.append(edge_dict)
+                
+                for edge in dest_edges:
+                    edge_dict = dict(zip(dest_result.keys(), edge))
+                    edge_dict['direction'] = 'incoming'  # Node is destination
+                    all_edges.append(edge_dict)
+            
+            logger.debug(f"Found {len(all_edges)} edges for node {node_type}:{node_id}")
+            return all_edges
+            
+        except Exception as e:
+            logger.error(f"Error getting edges for node {node_type}:{node_id}: {e}")
+            return []
+
     def create_claim(self, claim_data: dict, json_data: dict = None) -> str:
         """
         Create a claim in the database with deduplication logic.
