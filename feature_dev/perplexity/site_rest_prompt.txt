@@ -1,3 +1,0 @@
-Known site restictions:
-Supreme court rulings - site:supremecourt.gov/opinions
-DOJ press releases - site:justice.gov

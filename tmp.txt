@@ -1,0 +1,106 @@
+On branch codex_restruct
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	deleted:    app/data_collector/data_extracter.py
+	deleted:    app/data_collector/prompt.txt
+	deleted:    app/data_collector/text_processor.py
+	deleted:    app/data_collector/tmp_prompt.txt
+	deleted:    app/prompt.txt
+	deleted:    app/routines/test_specific_source.py
+	deleted:    app/text_collector/text_collector.py
+	deleted:    app/text_collector/text_retrievers/__init__.py
+	deleted:    app/text_collector/text_retrievers/fox_article_retriever.py
+	deleted:    app/text_collector/text_retrievers/fox_rss_retriever.py
+	deleted:    app/text_extractor.py
+	deleted:    docs/database_ref.txt
+	deleted:    docs/notes.txt
+	deleted:    docs/perp_app_restruct_notes.txt
+	deleted:    feature_dev/categorization/costs_model_stress_test.txt
+	deleted:    feature_dev/categorization/fox_rss_data_extract.py
+	deleted:    feature_dev/categorization/model_stress_test.py
+	deleted:    feature_dev/categorization/notes.txt
+	deleted:    feature_dev/categorization/prompt_model_stress_test.txt
+	deleted:    feature_dev/categorization/prompt_tests/deep_prompt_test.py
+	deleted:    feature_dev/categorization/prompt_tests/fox_article_retriever.py
+	deleted:    feature_dev/categorization/prompt_tests/prompts/canon_claim_test.txt
+	deleted:    feature_dev/categorization/prompt_tests/prompts/canon_supp_refut_claims.txt
+	deleted:    feature_dev/categorization/prompt_tests/prompts/gpt4.5_gen_v1.txt
+	deleted:    feature_dev/categorization/prompt_tests/prompts/gpt4.5_gen_v1_w_ids.txt
+	deleted:    feature_dev/categorization/prompt_tests/prompts/gpt4.5_goal_claim_split.txt
+	deleted:    feature_dev/categorization/prompt_tests/prompts/summ_and_quote.txt
+	deleted:    feature_dev/categorization/prompt_tests/prompts/summ_and_quote2.txt
+	deleted:    feature_dev/categorization/requirements.txt
+	deleted:    feature_dev/crawl4ai/fox_rss_test.py
+	deleted:    feature_dev/crawl4ai/prompt.txt
+	deleted:    feature_dev/data_processor/canon_claim_proc.py
+	deleted:    feature_dev/data_processor/data_processor.py
+	deleted:    feature_dev/perplexity/g_prompt_example.py
+	deleted:    feature_dev/perplexity/g_search_prompt.txt
+	deleted:    feature_dev/perplexity/google_cust_search.py
+	deleted:    feature_dev/perplexity/google_search.py
+	deleted:    feature_dev/perplexity/perp_api_test.py
+	deleted:    feature_dev/perplexity/perp_search_tests.py
+	deleted:    feature_dev/perplexity/perp_topic_research.py
+	deleted:    feature_dev/perplexity/site_rest_prompt.txt
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main.zip
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/.gitignore
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/LICENCE
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/README.md
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/config/settings.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/database/vector_store.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/example.env
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/insert_vectors.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/services/__init__.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/services/llm_factory.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/services/synthesizer.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/app/similarity_search.py
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/data/faq_dataset.csv
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/docker/docker-compose.yml
+	deleted:    feature_dev/pgvectorscale/pgvectorscale-rag-solution-main/requirements.txt
+	deleted:    feature_dev/pgvectorscale/requirements.txt
+	deleted:    feature_dev/pgvectorscale/test_program/cluster_test.py
+	deleted:    feature_dev/pgvectorscale/test_program/config/settings.py
+	deleted:    feature_dev/pgvectorscale/test_program/database/vector_store.py
+	deleted:    feature_dev/pgvectorscale/test_program/examples/insert_vectors.py
+	deleted:    feature_dev/pgvectorscale/test_program/examples/similarity_search.py
+	deleted:    feature_dev/pgvectorscale/test_program/grab_data.py
+	deleted:    feature_dev/pgvectorscale/test_program/know_graph_example.py
+	deleted:    feature_dev/pgvectorscale/test_program/notes.txt
+	deleted:    feature_dev/pgvectorscale/test_program/services/__init__.py
+	deleted:    feature_dev/pgvectorscale/test_program/services/llm_factory.py
+	deleted:    feature_dev/pgvectorscale/test_program/services/synthesizer.py
+	deleted:    feature_dev/pgvectorscale/test_program/vector_store_example.py
+	deleted:    feature_dev/text_scraper/Fox_RSS_Scrap_Test/rss_scrap.py
+	deleted:    feature_dev/text_scraper/Fox_transcript_test/tran_parse.py
+	deleted:    feature_dev/text_scraper/Fox_transcript_test/tran_scrap.py
+	deleted:    feature_dev/text_scraper/bea_soup_test_fox.py
+	deleted:    feature_dev/text_scraper/notes.txt
+	deleted:    feature_dev/text_scraper/requirements.txt
+	deleted:    feature_dev/text_scraper/rss_text_extract.py
+	deleted:    feature_dev/txtai_tests/requirements.txt
+	deleted:    feature_dev/txtai_tests/semantic_graph/sem_graph_test.py
+	deleted:    feature_dev/txtai_tests/transformers_tests/trans_canon.py
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   README.md
+	modified:   app/pol_app.py
+	deleted:    app/requirements.txt
+	modified:   app/run.sh
+	modified:   docker/docker-compose.yml
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env.example
+	app/LEGACY_REMOVAL.md
+	app/requirements.legacy.txt
+	docs/
+	pyproject.toml
+	research_app/
+	tests/
+	tmp.txt
+	uv.lock
+

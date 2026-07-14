@@ -1,7 +1,18 @@
 '''
 First draft of top level control program, will most likely split control logic into specialized 
 directories.
+
+DEPRECATED: retained only until the thesis-driven research application completes live validation.
+See app/LEGACY_REMOVAL.md. New code must not import this module.
 '''
+
+import warnings
+
+warnings.warn(
+    "app/pol_app.py is the deprecated RSS pipeline; use the `research` CLI.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # TODO: Change failed_links to MP.List/Set?
 

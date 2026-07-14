@@ -1,0 +1,19 @@
+# DEPRECATED: dependencies for the retained RSS reference implementation.
+# The active application is declared in ../pyproject.toml.
+annotated-types==0.7.0
+anyio==4.5.2
+apscheduler==3.10.4
+beautifulsoup4==4.13.3
+certifi==2025.1.31
+charset-normalizer==3.4.1
+distro==1.9.0
+feedparser==6.0.11
+httpx==0.28.1
+openai==1.67.0
+pandas
+pgvector
+psycopg2-binary
+pyvis
+requests==2.32.3
+sqlalchemy
+timescale-vector

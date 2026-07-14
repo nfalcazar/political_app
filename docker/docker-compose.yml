@@ -3,13 +3,18 @@ services:
     image: timescale/timescaledb-ha:pg16
     container_name: timescaledb
     environment:
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=political_research
       - POSTGRES_PASSWORD=password
     ports:
       - "5432:5432"
     volumes:
-      - timescaledb_data:/var/lib/postgresql/data
+      - political_research_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d political_research"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
 volumes:
-  timescaledb_data:
+  political_research_data:
