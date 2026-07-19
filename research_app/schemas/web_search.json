@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidates"],
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "title", "publisher", "reason", "stance", "claimed_primary", "query_key"],
+        "properties": {
+          "url": {"type": "string"},
+          "title": {"type": ["string", "null"]},
+          "publisher": {"type": ["string", "null"]},
+          "reason": {"type": ["string", "null"]},
+          "stance": {"enum": ["supports", "challenges", "mixed", "unknown"]},
+          "claimed_primary": {"type": "boolean"}
+          ,"query_key": {"type": "string"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidence"],
+  "properties": {
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["chunk_id", "finding", "exact_excerpt", "locator", "relationship", "explanation", "population", "geography", "timeframe", "methodology", "confidence"],
+        "properties": {
+          "chunk_id": {"type": "string"},
+          "finding": {"type": "string"},
+          "exact_excerpt": {"type": "string"},
+          "locator": {"type": "string"},
+          "relationship": {"enum": ["supports", "challenges", "mixed"]},
+          "explanation": {"type": "string"},
+          "population": {"type": ["string", "null"]},
+          "geography": {"type": ["string", "null"]},
+          "timeframe": {"type": ["string", "null"]},
+          "methodology": {"type": ["string", "null"]},
+          "confidence": {"enum": ["low", "medium", "high"]}
+        }
+      }
+    }
+  }
+}

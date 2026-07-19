@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "assessment", "arguments", "uncertainty_and_gaps"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "summary", "rationale", "evidence_ids"],
+      "properties": {
+        "label": {
+          "enum": ["leans_supporting", "leans_challenging", "mixed", "insufficient_evidence"]
+        },
+        "summary": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "arguments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stance", "title", "explanation", "evidence_ids"],
+        "properties": {
+          "stance": {"enum": ["supports", "challenges", "mixed"]},
+          "title": {"type": "string", "minLength": 1},
+          "explanation": {"type": "string", "minLength": 1},
+          "evidence_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "uncertainty_and_gaps": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

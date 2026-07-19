@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
-import hashlib
 import json
 import math
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import func, select
 
@@ -26,23 +24,8 @@ from .models import (
     ThesisVersion,
     utcnow,
 )
-
-
-def stable_hash(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
-def canonicalize_url(url: str) -> str:
-    parts = urlsplit(url.strip())
-    if parts.scheme not in {"http", "https"} or not parts.netloc:
-        raise ValueError(f"Not a supported web URL: {url}")
-    query = [
-        (key, value)
-        for key, value in parse_qsl(parts.query, keep_blank_values=True)
-        if not key.lower().startswith("utm_") and key.lower() not in {"fbclid", "gclid"}
-    ]
-    path = parts.path.rstrip("/") or "/"
-    return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, urlencode(query), ""))
+from .utils import canonicalize_url, stable_hash
+from .content_policy import classify_rights
 
 
 class Repository:
@@ -118,10 +101,18 @@ class Repository:
                         scope=item.scope,
                         approved=True,
                         search_queries=item.search_queries,
+                        origin=item.origin,
+                        review_status=item.review_status,
+                        provenance=item.provenance,
                     )
                 )
             project.status = ProjectStatus.APPROVED.value
             project.pause_requested = False
+            project.settings = {
+                **(project.settings or {}),
+                "max_source_attempts": plan.max_source_attempts,
+                "max_runtime_seconds": plan.max_runtime_seconds,
+            }
             return len(plan.propositions)
 
     def revise_thesis(self, project_id: str, text: str, reason: str | None = None) -> ThesisVersion:
@@ -163,25 +154,59 @@ class Repository:
                 ).all()
             )
 
-    def set_proposition_embedding(self, proposition_id: str, embedding: list[float]) -> None:
+    def set_proposition_embedding(self, proposition_id: str, embedding: list[float], metadata: dict | None = None) -> None:
         with self.db.session() as session:
             proposition = session.get(Proposition, proposition_id)
             if proposition is None:
                 raise ValueError(f"Unknown proposition: {proposition_id}")
             proposition.embedding = embedding
+            proposition.embedding_metadata = metadata or {}
 
-    def set_chunk_embeddings(self, embeddings: dict[str, list[float]]) -> None:
+    def set_chunk_embeddings(self, embeddings: dict) -> None:
         with self.db.session() as session:
-            for chunk_id, embedding in embeddings.items():
+            for chunk_id, value in embeddings.items():
                 chunk = session.get(SourceChunk, chunk_id)
                 if chunk is not None:
+                    embedding, metadata = value if isinstance(value, tuple) else (value, {})
                     chunk.embedding = embedding
+                    chunk.embedding_metadata = metadata
 
-    def set_evidence_embedding(self, evidence_id: str, embedding: list[float]) -> None:
+    def set_source_embedding(self, source_id: str, embedding: list[float], metadata: dict) -> None:
+        with self.db.session() as session:
+            source = session.get(Source, source_id)
+            if source is not None:
+                source.embedding = embedding
+                source.embedding_metadata = metadata
+
+    def set_evidence_embedding(self, evidence_id: str, embedding: list[float], metadata: dict | None = None) -> None:
         with self.db.session() as session:
             evidence = session.get(EvidenceUnit, evidence_id)
             if evidence is not None:
                 evidence.embedding = embedding
+                evidence.embedding_metadata = metadata or {}
+
+    def add_emergent_proposition(self, project_id: str, value: dict) -> Proposition:
+        thesis_version = self.current_thesis(project_id).version
+        with self.db.session() as session:
+            count = session.scalar(select(func.count(Proposition.id)).where(Proposition.project_id == project_id)) or 0
+            item = Proposition(
+                project_id=project_id, thesis_version=thesis_version,
+                plan_key=f"emergent_{count + 1}", text=value["text"],
+                kind="empirical", polarity=value.get("polarity", "neutral"),
+                scope=value.get("scope", {}), approved=True,
+                search_queries=value.get("search_queries", []),
+                origin="source_discovered", review_status="unreviewed",
+                provenance=value.get("provenance", {}),
+            )
+            session.add(item); session.flush(); return item
+
+    def save_synthesis(self, project_id: str, synthesis: dict) -> None:
+        with self.db.session() as session:
+            project = session.get(ResearchProject, project_id)
+            project.settings = {**(project.settings or {}), "synthesis": synthesis}
+
+    def synthesis(self, project_id: str) -> dict:
+        return dict((self.project(project_id).settings or {}).get("synthesis", {}))
 
     def similar_evidence(
         self, embedding: list[float], limit: int = 10
@@ -232,6 +257,24 @@ class Repository:
         with self.db.session() as session:
             project = session.get(ResearchProject, project_id)
             return bool(project and project.pause_requested)
+
+    def research_pass(self, project_id: str) -> int:
+        return int((self.project(project_id).settings or {}).get("research_pass", 1))
+
+    def advance_research_pass(self, project_id: str) -> int:
+        with self.db.session() as session:
+            project = session.get(ResearchProject, project_id)
+            if project is None:
+                raise ValueError(f"Unknown project: {project_id}")
+            current = int((project.settings or {}).get("research_pass", 1))
+            if current >= 2:
+                raise ValueError("The balanced pilot permits only one gap-filling pass")
+            settings = dict(project.settings or {})
+            settings["research_pass"] = current + 1
+            project.settings = settings
+            project.status = ProjectStatus.APPROVED.value
+            project.pause_requested = False
+            return current + 1
 
     def get_or_create_task(
         self,
@@ -290,6 +333,8 @@ class Repository:
         is_primary: bool = False,
         identifier: str | None = None,
         metadata: dict | None = None,
+        rights_status: str | None = None,
+        detected_license: str | None = None,
     ) -> Source:
         canonical_url = canonicalize_url(url)
         with self.db.session() as session:
@@ -305,6 +350,8 @@ class Repository:
                     is_primary=is_primary,
                     identifier=identifier,
                     metadata_=metadata or {},
+                    rights_status=rights_status or classify_rights(canonical_url, detected_license)[0],
+                    detected_license=detected_license,
                 )
                 session.add(source)
                 session.flush()
@@ -314,6 +361,21 @@ class Repository:
                 source.is_primary = source.is_primary or is_primary
                 if source.source_type == "unknown" and source_type != "unknown":
                     source.source_type = source_type
+                incoming = metadata or {}
+                if rights_status:
+                    source.rights_status = rights_status
+                if detected_license:
+                    source.detected_license = detected_license
+                merged = dict(source.metadata_ or {})
+                for key, value in incoming.items():
+                    merged.setdefault(key, value)
+                proposition_id = incoming.get("proposition_id")
+                if proposition_id:
+                    discovered_for = list(merged.get("discovered_for", []))
+                    if proposition_id not in discovered_for:
+                        discovered_for.append(proposition_id)
+                    merged["discovered_for"] = discovered_for
+                source.metadata_ = merged
             return source
 
     def store_source_content(
@@ -321,6 +383,9 @@ class Repository:
         source_id: str,
         content: str,
         chunks: list[tuple[str, str]],
+        *,
+        archive_chunks: list[tuple[str, str]] | None = None,
+        access_metadata: dict | None = None,
     ) -> Source:
         normalized = "\n\n".join(part.strip() for part in content.split("\n\n") if part.strip())
         content_hash = stable_hash(normalized)
@@ -336,10 +401,24 @@ class Repository:
             source = session.get(Source, source_id)
             if source is None:
                 raise ValueError(f"Unknown source: {source_id}")
-            source.normalized_content = normalized
+            access = access_metadata or {}
+            rights_status, detected_license = classify_rights(
+                source.canonical_url, access.get("detected_license")
+            )
+            source.rights_status = access.get("rights_status", rights_status)
+            source.detected_license = detected_license
+            source.normalized_content = (
+                normalized
+                if source.rights_status in {"public_domain", "open_license", "permission"}
+                else None
+            )
             source.content_hash = content_hash
             source.retrieval_status = "retrieved"
             source.retrieved_at = utcnow()
+            source.accessed_at = source.retrieved_at
+            source.retrieval_permission = access.get("retrieval_permission", "public_http")
+            source.robots_status = access.get("robots_status", "not_checked")
+            source.terms_status = access.get("terms_status", "not_checked")
             source.chunks.clear()
             for ordinal, (locator, text) in enumerate(chunks):
                 session.add(
@@ -349,6 +428,8 @@ class Repository:
                         locator=locator,
                         content=text,
                         content_hash=stable_hash(text),
+                        token_count=access.get("token_counts", {}).get(stable_hash(text)),
+                        relevance=access.get("relevance", {}).get(stable_hash(text), []),
                     )
                 )
             session.flush()
@@ -427,6 +508,13 @@ class Repository:
                     methodology=draft.methodology,
                     confidence=draft.confidence,
                     extraction_version=extraction_version,
+                    source_url=source.canonical_url,
+                    source_title=source.title,
+                    source_publisher=source.publisher,
+                    source_publication_date=source.publication_date,
+                    source_accessed_at=source.accessed_at or source.retrieved_at,
+                    source_rights_status=source.rights_status,
+                    quote_word_count=len(draft.excerpt.split()),
                 )
                 session.add(evidence)
                 session.flush()
@@ -482,11 +570,13 @@ class Repository:
         counts = Counter(row["link"].relationship for row in evidence)
         covered = {row["proposition"].id for row in evidence}
         with self.db.session() as session:
-            tasks = Counter(
-                session.scalars(
-                    select(ResearchTask.status).where(ResearchTask.project_id == project_id)
-                ).all()
-            )
+            task_rows = list(session.scalars(
+                select(ResearchTask).where(ResearchTask.project_id == project_id)
+            ).all())
+            tasks = Counter(item.status for item in task_rows)
+            runs = list(session.scalars(
+                select(ResearchRun).where(ResearchRun.project_id == project_id)
+            ).all())
             usage = session.execute(
                 select(
                     func.coalesce(func.sum(ResearchRun.input_tokens), 0),
@@ -506,4 +596,35 @@ class Repository:
             "input_tokens": usage[0],
             "output_tokens": usage[1],
             "estimated_cost": float(usage[2]),
+            "model_calls": len([item for item in runs if item.provider in {"codex", "deepseek"}]),
+            "failed_tasks": tasks.get("failed", 0),
+            "postprocess_failures": sum(
+                1 for item in task_rows if "postprocess_validation" in str(item.error or "")
+            ),
+            "evidence_items_received": sum(
+                (item.result or {}).get("processing", {}).get("received_items", 0)
+                for item in task_rows
+            ),
+            "evidence_items_accepted": sum(
+                (item.result or {}).get("processing", {}).get("accepted_items", 0)
+                for item in task_rows
+            ),
         }
+
+    def errors(self, project_id: str) -> list[dict]:
+        with self.db.session() as session:
+            tasks = session.scalars(
+                select(ResearchTask).where(
+                    ResearchTask.project_id == project_id,
+                    ResearchTask.error.is_not(None),
+                )
+            ).all()
+            return [
+                {
+                    "kind": "task", "task_id": item.id,
+                    "task_type": item.task_type, "status": item.status,
+                    "attempts": item.attempts, "error": item.error,
+                    "updated_at": item.updated_at.isoformat() if item.updated_at else None,
+                }
+                for item in tasks
+            ]

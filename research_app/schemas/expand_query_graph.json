@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["queries"],
+  "properties": {
+    "queries": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["query", "query_kind", "proposition_ids", "target_stance", "target_source_class", "expansion_reason", "depth", "priority"],
+        "properties": {
+          "query": {"type": "string", "minLength": 8, "maxLength": 800},
+          "query_kind": {"enum": ["citation_chase", "evidence_gap", "counterevidence", "mechanism", "historical_context"]},
+          "proposition_ids": {"type": "array", "items": {"type": "string"}},
+          "target_stance": {"enum": ["supports", "challenges", "mixed", "unknown"]},
+          "target_source_class": {"enum": ["primary", "official", "scholarly"]},
+          "expansion_reason": {"type": "string"},
+          "depth": {"type": "integer", "minimum": 0, "maximum": 3},
+          "priority": {"type": "number", "minimum": 0, "maximum": 10}
+        }
+      }
+    }
+  }
+}

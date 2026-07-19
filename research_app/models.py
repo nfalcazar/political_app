@@ -119,6 +119,10 @@ class Proposition(Base):
     approved: Mapped[bool] = mapped_column(Boolean, default=False)
     search_queries: Mapped[list] = mapped_column(JSON, default=list)
     embedding: Mapped[list[float] | None] = mapped_column(Embedding(), nullable=True)
+    embedding_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    origin: Mapped[str] = mapped_column(String(32), default="planned")
+    review_status: Mapped[str] = mapped_column(String(32), default="reviewed")
+    provenance: Mapped[dict] = mapped_column(JSON, default=dict)
 
     project: Mapped[ResearchProject] = relationship(back_populates="propositions")
 
@@ -143,6 +147,15 @@ class Source(Base):
     normalized_content: Mapped[str | None] = mapped_column(Text, nullable=True)
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    embedding: Mapped[list[float] | None] = mapped_column(Embedding(), nullable=True)
+    embedding_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    rights_status: Mapped[str] = mapped_column(String(32), default="unknown")
+    detected_license: Mapped[str | None] = mapped_column(Text, nullable=True)
+    accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retrieval_permission: Mapped[str] = mapped_column(String(40), default="unknown")
+    robots_status: Mapped[str] = mapped_column(String(40), default="not_checked")
+    terms_status: Mapped[str] = mapped_column(String(40), default="not_checked")
+    cache_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
 
     chunks: Mapped[list[SourceChunk]] = relationship(
         back_populates="source", cascade="all, delete-orphan"
@@ -162,6 +175,9 @@ class SourceChunk(Base):
     content: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
     embedding: Mapped[list[float] | None] = mapped_column(Embedding(), nullable=True)
+    embedding_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    relevance: Mapped[list] = mapped_column(JSON, default=list)
+    token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     source: Mapped[Source] = relationship(back_populates="chunks")
 
@@ -188,7 +204,15 @@ class EvidenceUnit(Base):
     confidence: Mapped[str] = mapped_column(String(20), default="medium")
     extraction_version: Mapped[str] = mapped_column(String(40), default="manual-v1")
     embedding: Mapped[list[float] | None] = mapped_column(Embedding(), nullable=True)
+    embedding_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_publisher: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_publication_date: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    source_accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source_rights_status: Mapped[str] = mapped_column(String(32), default="unknown")
+    quote_word_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class EvidenceLink(Base):

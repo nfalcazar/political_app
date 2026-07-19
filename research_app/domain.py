@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 import json
+import os
 from pathlib import Path
+import tempfile
 from typing import Any
 
 
@@ -19,6 +21,9 @@ class PlannedProposition:
     polarity: str = "neutral"
     scope: dict[str, Any] = field(default_factory=dict)
     search_queries: list[str] = field(default_factory=list)
+    origin: str = "planned"
+    review_status: str = "reviewed"
+    provenance: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "PlannedProposition":
@@ -33,6 +38,9 @@ class PlannedProposition:
             polarity=str(value.get("polarity", "neutral")),
             scope=dict(value.get("scope", {})),
             search_queries=[str(query).strip() for query in value.get("search_queries", [])],
+            origin=str(value.get("origin", "planned")),
+            review_status=str(value.get("review_status", "reviewed")),
+            provenance=dict(value.get("provenance", {})),
         )
         if not item.key or not item.text:
             raise ValueError("Proposition key and text cannot be empty")
@@ -50,6 +58,8 @@ class ResearchPlan:
     thesis_version: int
     propositions: list[PlannedProposition]
     approval_required: bool = True
+    max_source_attempts: int = 20
+    max_runtime_seconds: int = 900
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -57,12 +67,26 @@ class ResearchPlan:
             "thesis": self.thesis,
             "thesis_version": self.thesis_version,
             "approval_required": self.approval_required,
+            "limits": {
+                "max_source_attempts": self.max_source_attempts,
+                "max_runtime_seconds": self.max_runtime_seconds,
+            },
             "propositions": [asdict(item) for item in self.propositions],
         }
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_dict(), indent=2) + "\n", encoding="utf-8")
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(self.to_dict(), handle, indent=2)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp_name, path)
+        finally:
+            if os.path.exists(tmp_name):
+                os.unlink(tmp_name)
 
     @classmethod
     def read(cls, path: Path) -> "ResearchPlan":
@@ -81,6 +105,8 @@ class ResearchPlan:
             thesis_version=int(value["thesis_version"]),
             propositions=propositions,
             approval_required=bool(value.get("approval_required", True)),
+            max_source_attempts=int(value.get("limits", {}).get("max_source_attempts", 20)),
+            max_runtime_seconds=int(value.get("limits", {}).get("max_runtime_seconds", 900)),
         )
 
 
@@ -104,4 +130,3 @@ class EvidenceDraft:
             raise ValueError(f"Invalid confidence: {self.confidence}")
         if not all((self.finding.strip(), self.excerpt.strip(), self.locator.strip())):
             raise ValueError("Finding, excerpt, and locator are required")
-

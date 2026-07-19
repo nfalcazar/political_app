@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from .domain import PlannedProposition, ResearchPlan
-from .models import ProjectStatus
-from .repository import Repository
+from .states import ProjectStatus
 
 
 LABOR_DIMENSIONS = (
@@ -20,15 +20,15 @@ LABOR_DIMENSIONS = (
 
 
 class Planner:
-    def __init__(self, repository: Repository, ai=None):
+    def __init__(self, repository: Any, ai=None):
         self.repository = repository
         self.ai = ai
 
     def create_plan(self, project_id: str) -> ResearchPlan:
         project = self.repository.project(project_id)
         if project.status not in {
-            ProjectStatus.DRAFT.value,
-            ProjectStatus.PLANNED.value,
+            ProjectStatus.DRAFT,
+            ProjectStatus.PLANNED,
         }:
             raise ValueError(
                 "Create a new thesis version before replacing an approved research plan"
@@ -59,8 +59,10 @@ class Planner:
                     polarity="neutral",
                     scope={"geography": "United States"},
                     search_queries=[
-                        f"{text} primary research United States",
-                        f"{text} study data counter evidence",
+                        f"{text} United States official data report",
+                        f"{text} peer reviewed study DOI",
+                        f"{text} strongest counter evidence costs tradeoffs",
+                        f"{text} sector differences causal mechanism boundary conditions",
                     ],
                 )
                 for key, text in LABOR_DIMENSIONS
@@ -101,16 +103,17 @@ class Planner:
     def _ai_plan(self, project_id: str, thesis: str) -> list[PlannedProposition]:
         prompt = f"""Decompose the following US political-policy thesis into narrow propositions.
 Separate empirical claims from normative premises. Include the strongest plausible opposing hypotheses.
-For every empirical proposition, provide two web searches designed to find primary research or official data,
-including one search for counterevidence. Return JSON with a `propositions` array. Each item must contain:
-key, text, kind (empirical|normative), polarity (supports_thesis|challenges_thesis|neutral), scope, search_queries.
+For every empirical proposition, provide four distinct web searches: official data, original academic research,
+strong counterevidence, and boundary conditions. Return JSON with a `propositions` array. Each item must contain:
+key, text, kind (empirical|normative), polarity (supports_thesis|challenges_thesis|neutral),
+scope with geography/population/timeframe values (nullable), and search_queries.
 
 THESIS: {thesis}"""
         payload, usage = self.ai.json_completion(prompt, operation="plan")
         self.repository.record_run(
             project_id,
             "plan",
-            provider="openai",
+            provider=getattr(self.ai, "provider_name", "unknown"),
             model=self.ai.model,
             prompt_version="v1",
             input_tokens=usage.input_tokens,

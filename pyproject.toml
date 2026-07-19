@@ -9,24 +9,40 @@ description = "Thesis-driven, primary-source-grounded political research dossier
 requires-python = ">=3.10"
 dependencies = [
   "beautifulsoup4>=4.12",
-  "openai>=1.67",
-  "pgvector>=0.3",
-  "psycopg2-binary>=2.9",
   "pypdf>=5.0",
   "requests>=2.32",
-  "sqlalchemy>=2.0",
+  "openai>=1.67",
+  "jsonschema>=4.23",
+  "python-dotenv>=1.0",
+  "tiktoken>=0.9",
+  "trafilatura>=2.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+api = ["fastapi>=0.115", "uvicorn>=0.30"]
+db = ["pgvector>=0.3", "psycopg2-binary>=2.9", "sqlalchemy>=2.0"]
+browser = ["playwright>=1.50"]
+documents = ["PyMuPDF>=1.25"]
+dev = [
+  "pytest>=8.0",
+  "httpx2>=2.0.0",
+  "jsonschema>=4.23",
+  "python-dotenv>=1.0",
+  "pgvector>=0.3",
+  "psycopg2-binary>=2.9",
+  "sqlalchemy>=2.0",
+]
 
 [project.scripts]
 research = "research_app.cli:main"
+research-web = "research_app.web:main"
 
 [tool.setuptools.packages.find]
 include = ["research_app*"]
 
+[tool.setuptools.package-data]
+research_app = ["schemas/*.json", "web_static/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-
